@@ -2,7 +2,7 @@
 import { useToastStore } from "@/stores/toast";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
-import { computed, onBeforeMount } from "vue";
+import { computed, onBeforeMount, ref } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
 
 const currentRoute = useRoute();
@@ -19,6 +19,13 @@ onBeforeMount(async () => {
     // User is not logged in
   }
 });
+
+// Canvas state for toggling
+const is1DCanvas = ref(true);
+
+function toggleCanvas() {
+  is1DCanvas.value = !is1DCanvas.value;
+}
 </script>
 
 <template>
@@ -27,7 +34,7 @@ onBeforeMount(async () => {
       <div class="title">
         <img src="@/assets/images/logo.svg" />
         <RouterLink :to="{ name: 'Home' }">
-          <h1>Social Media App</h1>
+          <h1>Entropy Compass</h1>
         </RouterLink>
       </div>
       <ul>
@@ -40,13 +47,18 @@ onBeforeMount(async () => {
         <li v-else>
           <RouterLink :to="{ name: 'Login' }" :class="{ underline: currentRouteName == 'Login' }"> Login </RouterLink>
         </li>
+        <li v-if="isLoggedIn && currentRouteName === 'Home'">
+          <button @click="toggleCanvas">
+            {{ is1DCanvas ? "Switch to 2D Canvas" : "Switch to 1D Canvas" }}
+          </button>
+        </li>
       </ul>
     </nav>
     <article v-if="toast !== null" class="toast" :class="toast.style">
       <p>{{ toast.message }}</p>
     </article>
   </header>
-  <RouterView />
+  <RouterView :is1DCanvas="is1DCanvas" />
 </template>
 
 <style scoped>
