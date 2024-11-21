@@ -66,6 +66,11 @@ class Routes {
     return { msg: "Logged out!" };
   }
 
+  //image API routes
+
+  @Router.post("/image")
+  async createImage() {}
+
   // @Router.get("/posts")
   // @Router.validate(z.object({ author: z.string().optional() }))
   // async getPosts(author?: string) {
