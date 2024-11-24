@@ -1,3 +1,22 @@
+// {
+//   "compilerOptions": {
+//     "target": "ESNext",
+//     "module": "ESNext",
+//     "moduleResolution": "node",
+//     "strict": true,
+//     "sourceMap": true,
+//     "resolveJsonModule": true,
+//     "isolatedModules": true,
+//     "esModuleInterop": true,
+//     "lib": ["ESNext", "dom"],
+//     "paths": {
+//       "@/*": ["./*"]
+//     },
+//     "outDir": "../dist/client"
+//   },
+//   "include": ["./**/*.ts", "./**/*.vue"]
+// }
+
 {
   "compilerOptions": {
     "target": "ESNext",
@@ -12,7 +31,8 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "outDir": "../dist/client"
+    "outDir": "../dist/client",
+    "types": ["@types/p5"] // Add this line
   },
   "include": ["./**/*.ts", "./**/*.vue"]
 }
