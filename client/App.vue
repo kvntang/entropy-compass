@@ -58,6 +58,7 @@ function toggleCanvas() {
       <p>{{ toast.message }}</p>
     </article>
   </header>
+  <!-- prop being passed into the child -->
   <RouterView :is1DCanvas="is1DCanvas" />
 </template>
 

@@ -6,12 +6,14 @@ import { fetchy } from "@/utils/fetchy";
 export const useUserStore = defineStore(
   "user",
   () => {
-    const currentUsername = ref("");
+    const currentUsername = ref(""); // Stores the current user's username
+    const currentUserID = ref(""); // Stores the current user's ID
 
     const isLoggedIn = computed(() => currentUsername.value !== "");
 
     const resetStore = () => {
       currentUsername.value = "";
+      currentUserID.value = "";
     };
 
     const createUser = async (username: string, password: string) => {
@@ -28,10 +30,11 @@ export const useUserStore = defineStore(
 
     const updateSession = async () => {
       try {
-        const { username } = await fetchy("/api/session", "GET", { alert: false });
+        const { username, _id } = await fetchy("/api/session", "GET", { alert: false });
         currentUsername.value = username;
+        currentUserID.value = _id; // Update the current user ID
       } catch {
-        currentUsername.value = "";
+        resetStore();
       }
     };
 
@@ -55,6 +58,7 @@ export const useUserStore = defineStore(
 
     return {
       currentUsername,
+      currentUserID, // Expose the new variable
       isLoggedIn,
       createUser,
       loginUser,

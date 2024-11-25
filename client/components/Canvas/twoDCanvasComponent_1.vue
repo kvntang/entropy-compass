@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import p5 from 'p5';
-import { onMounted, ref } from 'vue';
+import p5 from "p5";
+import { onMounted, ref } from "vue";
 
 // Reference to the canvas container
 const canvasContainer = ref(null);
@@ -38,19 +38,9 @@ onMounted(() => {
         // Draw all recorded static positions with reduced opacity
         p.noStroke();
         for (let sp of staticPositions) {
-          p.fill(
-            p.red(sp.color),
-            p.green(sp.color),
-            p.blue(sp.color),
-            50
-          ); // Reduced opacity
+          p.fill(p.red(sp.color), p.green(sp.color), p.blue(sp.color), 50); // Reduced opacity
           // Draw squares instead of circles
-          p.rect(
-            sp.pos.x - ball.radius,
-            sp.pos.y - ball.radius,
-            ball.radius * 2,
-            ball.radius * 2
-          );
+          p.rect(sp.pos.x - ball.radius, sp.pos.y - ball.radius, ball.radius * 2, ball.radius * 2);
         }
 
         // Draw a dotted line connecting the history squares dynamically
@@ -59,24 +49,14 @@ onMounted(() => {
           p.strokeWeight(1);
           (p.drawingContext as CanvasRenderingContext2D).setLineDash([5, 5]); // Dotted line
           for (let i = 0; i < staticPositions.length - 1; i++) {
-            p.line(
-              staticPositions[i].pos.x,
-              staticPositions[i].pos.y,
-              staticPositions[i + 1].pos.x,
-              staticPositions[i + 1].pos.y
-            );
+            p.line(staticPositions[i].pos.x, staticPositions[i].pos.y, staticPositions[i + 1].pos.x, staticPositions[i + 1].pos.y);
           }
           (p.drawingContext as CanvasRenderingContext2D).setLineDash([]); // Reset line dash
         }
 
         // Draw the current square
         p.fill(ball.color);
-        p.rect(
-          ball.pos.x - ball.radius,
-          ball.pos.y - ball.radius,
-          ball.radius * 2,
-          ball.radius * 2
-        );
+        p.rect(ball.pos.x - ball.radius, ball.pos.y - ball.radius, ball.radius * 2, ball.radius * 2);
 
         if (isDragging) {
           // Calculate the dynamic circle radius based on the distance to the mouse
@@ -92,29 +72,15 @@ onMounted(() => {
 
           // Draw a horizontal line from the square to the edge of the circle
           p.stroke(150);
-          p.line(
-            ball.pos.x - dynamicRadius,
-            ball.pos.y,
-            ball.pos.x + dynamicRadius,
-            ball.pos.y
-          );
+          p.line(ball.pos.x - dynamicRadius, ball.pos.y, ball.pos.x + dynamicRadius, ball.pos.y);
 
           // Calculate the launch direction (opposite of the drag direction)
-          launchDirection = p
-            .createVector(ball.pos.x, ball.pos.y)
-            .sub(p.createVector(p.mouseX, p.mouseY))
-            .normalize()
-            .mult(dynamicRadius);
+          launchDirection = p.createVector(ball.pos.x, ball.pos.y).sub(p.createVector(p.mouseX, p.mouseY)).normalize().mult(dynamicRadius);
 
           // Draw the launch line indicating the angle
           p.stroke(255);
           p.strokeWeight(2);
-          p.line(
-            ball.pos.x,
-            ball.pos.y,
-            ball.pos.x + launchDirection.x,
-            ball.pos.y + launchDirection.y
-          );
+          p.line(ball.pos.x, ball.pos.y, ball.pos.x + launchDirection.x, ball.pos.y + launchDirection.y);
 
           // Draw the launch arrow indicating the angle
           p.push();
@@ -134,14 +100,7 @@ onMounted(() => {
           // Draw the triangle for the arrowhead
           p.translate(arrowX, arrowY);
           p.rotate(angle);
-          p.triangle(
-            0,
-            0,
-            -arrowSize,
-            arrowSize / 2,
-            -arrowSize,
-            -arrowSize / 2
-          );
+          p.triangle(0, 0, -arrowSize, arrowSize / 2, -arrowSize, -arrowSize / 2);
           p.pop();
 
           // Draw the dotted line from the square to the mouse position
@@ -202,9 +161,7 @@ onMounted(() => {
           ball.vel = force;
 
           // Determine drag direction
-          let dragVector = p
-            .createVector(p.mouseX, p.mouseY)
-            .sub(ball.pos);
+          let dragVector = p.createVector(p.mouseX, p.mouseY).sub(ball.pos);
           if (dragVector.x > 0) {
             // Dragged to the right (launching left), make squares red
             ball.color = p.color(255, 0, 0); // Red

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import p5 from 'p5';
-import { onMounted, ref } from 'vue';
-
+import p5 from "p5";
+import { onMounted, ref } from "vue";
 
 const canvasContainer = ref(null);
 
@@ -88,9 +87,7 @@ onMounted(() => {
         for (let img of images) {
           // Handle elastic animation
           if (img.isAnimating) {
-            let t = img.animationStartTime
-              ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1)
-              : 0;
+            let t = img.animationStartTime ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1) : 0;
             t = p.constrain(t, 0, 1);
             let easeT = easeOutElastic(t);
 
@@ -107,9 +104,7 @@ onMounted(() => {
             img.currentY = img.y;
           }
 
-          p.fill(
-            img.isNoisy ? p.color(255, 0, 0, img.alpha) : p.color(0, 0, 255, img.alpha)
-          );
+          p.fill(img.isNoisy ? p.color(255, 0, 0, img.alpha) : p.color(0, 0, 255, img.alpha));
           p.rect(img.x, img.currentY, gridSize, gridSize);
 
           // Display the number on top of the image
@@ -132,31 +127,20 @@ onMounted(() => {
             // Draw drag line centered on the square
             p.stroke(255);
             p.strokeWeight(2 / scaleFactor);
-            p.line(lineX, lineStartY, lineX, (p.mouseY / scaleFactor - translateY));
+            p.line(lineX, lineStartY, lineX, p.mouseY / scaleFactor - translateY);
 
             // Calculate steps (number of grid units dragged)
-            let steps = Math.floor(
-              (p.mouseY / scaleFactor - translateY - lineStartY) / (gridSize + padding)
-            );
+            let steps = Math.floor((p.mouseY / scaleFactor - translateY - lineStartY) / (gridSize + padding));
             steps = Math.max(1, steps); // Ensure at least one step
 
             // Image follows the mouse vertically
             p.noStroke();
             p.fill(lastImage.isNoisy ? p.color(255, 0, 0) : p.color(0, 0, 255));
-            p.rect(
-              lastImage.x,
-              lastImage.y + dragDistanceY,
-              gridSize,
-              gridSize
-            );
+            p.rect(lastImage.x, lastImage.y + dragDistanceY, gridSize, gridSize);
 
             // Display number (incremented by steps)
             p.fill(255);
-            p.text(
-              lastImage.number + steps,
-              lastImage.x + gridSize / 2,
-              lastImage.y + dragDistanceY + gridSize / 2
-            );
+            p.text(lastImage.number + steps, lastImage.x + gridSize / 2, lastImage.y + dragDistanceY + gridSize / 2);
 
             // Display numbers along the drag line
             for (let i = 1; i <= steps; i++) {
@@ -168,45 +152,28 @@ onMounted(() => {
           } else if (Math.abs(dragDistanceX) > 0) {
             // Horizontal dragging
             let steps = Math.floor(Math.abs(dragDistanceX) / stepDistance);
-            let direction = dragDistanceX < 0 ? 'noise' : 'denoise';
+            let direction = dragDistanceX < 0 ? "noise" : "denoise";
 
             // Draw preview line
             p.stroke(255);
             p.strokeWeight(2 / scaleFactor);
-            p.line(
-              dragStartX / scaleFactor - translateX,
-              dragStartY / scaleFactor - translateY,
-              p.mouseX / scaleFactor - translateX,
-              dragStartY / scaleFactor - translateY
-            );
+            p.line(dragStartX / scaleFactor - translateX, dragStartY / scaleFactor - translateY, p.mouseX / scaleFactor - translateX, dragStartY / scaleFactor - translateY);
 
             // Draw preview square
             p.noFill();
-            p.stroke(
-              dragDistanceX < 0 ? p.color(255, 0, 0) : p.color(0, 0, 255)
-            ); // Red for left, Blue for right
+            p.stroke(dragDistanceX < 0 ? p.color(255, 0, 0) : p.color(0, 0, 255)); // Red for left, Blue for right
             p.strokeWeight(1 / scaleFactor);
             let previewX = lastImage.x;
-            if (direction === 'noise') {
-              previewX = Math.max(
-                padding,
-                lastImage.x - steps * (gridSize + padding)
-              );
+            if (direction === "noise") {
+              previewX = Math.max(padding, lastImage.x - steps * (gridSize + padding));
             } else {
-              previewX = Math.min(
-                p.width / scaleFactor - gridSize - padding,
-                lastImage.x + steps * (gridSize + padding)
-              );
+              previewX = Math.min(p.width / scaleFactor - gridSize - padding, lastImage.x + steps * (gridSize + padding));
             }
             p.rect(previewX, lastImage.y, gridSize, gridSize);
 
             // Display number on preview
             p.fill(255);
-            p.text(
-              lastImage.number,
-              previewX + gridSize / 2,
-              lastImage.y + gridSize / 2
-            );
+            p.text(lastImage.number, previewX + gridSize / 2, lastImage.y + gridSize / 2);
           }
         }
 
@@ -253,19 +220,13 @@ onMounted(() => {
           let dragDistanceX = (p.mouseX - dragStartX) / scaleFactor;
           let dragDistanceY = (p.mouseY - dragStartY) / scaleFactor;
 
-          if (
-            Math.abs(dragDistanceY) > Math.abs(dragDistanceX) &&
-            dragDistanceY > 0
-          ) {
+          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > 0) {
             // Vertical dragging (editing)
             let lastImage = images[images.length - 1];
 
             // Calculate steps
             let lineStartY = lastImage.y + gridSize / 2;
-            let steps = Math.floor(
-              (p.mouseY / scaleFactor - translateY - lineStartY) /
-                (gridSize + padding)
-            );
+            let steps = Math.floor((p.mouseY / scaleFactor - translateY - lineStartY) / (gridSize + padding));
             steps = Math.max(1, steps);
 
             // The image snaps back to just the next row
@@ -305,16 +266,10 @@ onMounted(() => {
 
               if (dragDistanceX < 0) {
                 // Add noise (move left)
-                newX = Math.max(
-                  padding,
-                  lastImage.x - steps * (gridSize + padding)
-                );
+                newX = Math.max(padding, lastImage.x - steps * (gridSize + padding));
               } else {
                 // Denoise (move right)
-                newX = Math.min(
-                  p.width / scaleFactor - gridSize - padding,
-                  lastImage.x + steps * (gridSize + padding)
-                );
+                newX = Math.min(p.width / scaleFactor - gridSize - padding, lastImage.x + steps * (gridSize + padding));
               }
 
               // Add new image state
@@ -373,12 +328,7 @@ onMounted(() => {
       };
 
       function mouseInCanvas() {
-        return (
-          p.mouseX >= 0 &&
-          p.mouseX <= p.width &&
-          p.mouseY >= 0 &&
-          p.mouseY <= p.height
-        );
+        return p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
       }
 
       // Easing function for elastic effect
@@ -403,7 +353,7 @@ body,
 html {
   margin: 0;
   padding: 0;
-  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-family: "Helvetica Neue", Arial, sans-serif;
   background-color: #181818;
   color: #fff;
   overflow: hidden;
