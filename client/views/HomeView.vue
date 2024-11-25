@@ -48,8 +48,9 @@ function refreshImages() {
 }
 
 // Dynamic message based on the canvas type
-const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas!!!!!" : "2D Canvas!!!!!"));
+const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canvas"));
 </script>
+
 
 <template>
   <main>
@@ -61,8 +62,8 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas!!!!!" : "2D 
     </section>
     <!-- Conditionally render the canvas components and message -->
     <section v-if="isLoggedIn">
-      <deleteButton @refreshImages="refreshImages" />
       <h2>{{ canvasMessage }}</h2>
+      <deleteButton @refreshImages="refreshImages" />
       <section v-if="loading">Loading images...</section>
       <section v-else-if="error">{{ error }}</section>
       <template v-else>
@@ -73,8 +74,44 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas!!!!!" : "2D 
   </main>
 </template>
 
+
 <style scoped>
+/* change global font */
+body {
+  font-family: "Arial", sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: white;
+}
+
 h1 {
   text-align: center;
+  margin: 20px 0;
 }
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  background-color: #1a1a1a;
+  color: white;
+  padding: 20px;
+}
+section {
+  width: 90%;
+  max-width: 1200px;
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 10px;
+  background: #2b2b2b;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* center the 1d canvas/2d canvas text */
+h2 {
+  text-align: center;
+}
+
 </style>
