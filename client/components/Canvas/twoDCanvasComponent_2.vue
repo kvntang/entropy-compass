@@ -3,13 +3,21 @@ import p5 from "p5";
 import { onMounted, ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
-// Define the images prop
-const props = defineProps({
-  images: {
-    type: Array,
-    required: true,
-  },
-});
+// Define the `images` prop and use the `ImageDoc` interface
+interface ImageDoc {
+  author: string; // Author ID as a string
+  coordinate: string; // "x,y" position
+  prompt: string; // Prompt for the image
+  type: string; // "red" or "blue" based on direction
+  step: string; // Launch distance as a string
+  originalImage: string; // Base64 string placeholder
+  steppedImage: string; // Base64 string placeholder
+  promptedImage: string; // Base64 string placeholder
+}
+
+const props = defineProps<{
+  images: ImageDoc[];
+}>();
 
 console.log("Received images in child:", props.images);
 
@@ -56,7 +64,7 @@ onMounted(() => {
         canvas.parent(canvasContainer.value);
 
         // Initialize static positions from props.images
-        props.images.forEach((image: { coordinate: string; type: string }, index: number) => {
+        props.images.forEach((image: { coordinate: string; type: string }) => {
           const [x, y] = image.coordinate.split(",").map(Number);
           const color = image.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255);
 
