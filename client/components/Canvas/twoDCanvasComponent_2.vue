@@ -1,18 +1,22 @@
+<!-- interactions: 
+ shift to pan
+ drag to move
+ command or control to zoom -->
+
 <script setup lang="ts">
 import p5 from "p5";
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
-// Define the `images` prop and use the `ImageDoc` interface
 interface ImageDoc {
-  author: string; // Author ID as a string
-  coordinate: string; // "x,y" position
-  prompt: string; // Prompt for the image
-  type: string; // "red" or "blue" based on direction
-  step: string; // Launch distance as a string
-  originalImage: string; // Base64 string placeholder
-  steppedImage: string; // Base64 string placeholder
-  promptedImage: string; // Base64 string placeholder
+  author: string;
+  coordinate: string; // stored as x, y
+  prompt: string;
+  type: string;
+  step: string;
+  originalImage: string;
+  steppedImage: string;
+  promptedImage: string;
 }
 
 const props = defineProps<{
@@ -21,29 +25,26 @@ const props = defineProps<{
 
 console.log("Received images in child:", props.images);
 
-// Reference to the canvas container
 const canvasContainer = ref(null);
 
-// Helper function to create a new ImageDoc
 const createImageDoc = async (coordinate: string, type: string, step: string) => {
   try {
-    // Mocked author ID (replace with actual user authentication logic)
-    const authorId = "mocked-author-id";
-
+    const authorId = "mocked-author-id"; // Mocked user
     await fetchy("/api/images", "POST", {
       body: {
         author: authorId,
         coordinate,
         type,
-        step, // Step is now a string
+        step,
         prompt: "",
         originalImage: "",
         steppedImage: "",
         promptedImage: "",
       },
     });
-
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}`);
+    console.log(
+      `ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}`
+    );
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
@@ -51,157 +52,261 @@ const createImageDoc = async (coordinate: string, type: string, step: string) =>
 
 onMounted(() => {
   if (canvasContainer.value) {
-    new p5((p) => {
-      // Variables
-      let point: any; // Renamed from `ball` to `point`
+    const sketch = new p5((p) => {
+      let point: any;
       let isDragging = false;
+      let isPanning = false;
       let launchDirection: p5.Vector;
       let staticPositions: { pos: p5.Vector; color: p5.Color; type: string; step: number }[] = [];
-      let currentColor: p5.Color; // Placeholder for the color of the point's "image"
+      let currentColor: p5.Color;
+      let initialPosition: p5.Vector;
+
+      let canvasWidth = 0;
+      let canvasHeight = 0;
+
+      // Camera variables
+      let camPos = p.createVector(0, 0);
+      let scaleFactor = 1;
+      const minScale = 0.5;
+      const maxScale = 2;
+      let translateX = 0;
+      let translateY = 0;
+      let panStartX = 0;
+      let panStartY = 0;
+      let panStartTranslateX = 0;
+      let panStartTranslateY = 0;
 
       p.setup = () => {
-        const canvas = p.createCanvas(p.windowWidth, p.windowHeight);
+        canvasWidth = p.windowWidth - 40;
+        canvasHeight = p.windowHeight - 120;
+        const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(canvasContainer.value);
 
-        // Initialize static positions from props.images
-        props.images.forEach((image: { coordinate: string; type: string }) => {
-          const [x, y] = image.coordinate.split(",").map(Number);
-          const color = image.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+        initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
+        camPos = initialPosition.copy(); // Center camera on initial position
 
-          staticPositions.push({
-            pos: p.createVector(x, y),
-            color,
-            type: image.type,
-            step: 0, // No step value for static images
-          });
+        // Add initial position to staticPositions with blue color
+        staticPositions.push({
+          pos: initialPosition.copy(),
+          color: p.color(0, 0, 255), // Changed to blue
+          type: "blue",
+          step: 0,
         });
 
-        // Point properties
+        // Add any existing positions from props
+        props.images.forEach((image) => {
+          const [x, y] = image.coordinate.split(",").map(Number);
+          const color = image.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+          staticPositions.push({ pos: p.createVector(x, y), color, type: image.type, step: 0 });
+        });
+
+        // Initialize point at the last position
+        const lastPos = staticPositions[staticPositions.length - 1].pos;
         point = {
-          pos: p.createVector(p.width / 2, p.height / 2),
-          radius: 25, // Adjust radius to match the size of the placeholder "image"
+          pos: lastPos.copy(),
+          radius: 20,
           vel: p.createVector(0, 0),
           isFlying: false,
-          type: "red", // Default type
-          step: 0, // Placeholder for step
+          type: "blue",
+          step: 0,
         };
-
-        // Default color (red for now)
-        currentColor = p.color(255, 0, 0);
-
-        // Launch direction vector
+        currentColor = p.color(0, 0, 255); // Set initial color to blue
         launchDirection = p.createVector(0, 0);
+      };
+
+      function getMouseWorld() {
+        return p.createVector(
+          (p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x,
+          (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y
+        );
       };
 
       p.draw = () => {
         p.background(10);
 
-        // Draw all recorded static positions as colored boxes (placeholder for images)
+        p.push();
+        // Apply camera transformations
+        p.translate(p.width / 2, p.height / 2);
+        p.scale(scaleFactor);
+        p.translate(translateX, translateY);
+
+        // Draw all static positions
         staticPositions.forEach((sp, index) => {
-          // Draw the rectangle
           p.fill(sp.color);
           p.rectMode(p.CENTER);
           p.rect(sp.pos.x, sp.pos.y, point.radius * 2, point.radius * 2);
-
-          // Draw the index label
-          p.fill(255); // White text
+          p.fill(255);
           p.textAlign(p.CENTER, p.CENTER);
-          p.text(index, sp.pos.x, sp.pos.y - point.radius - 10); // Position label above the rectangle
+          p.text(index, sp.pos.x, sp.pos.y - point.radius - 10);
         });
 
-        // Draw the current point's placeholder "image" as a colored box
-        p.fill(currentColor);
-        p.rectMode(p.CENTER);
-        p.rect(point.pos.x, point.pos.y, point.radius * 2, point.radius * 2);
+        // Only draw the moving point when it's being dragged or flying
+        if (isDragging || point.isFlying) {
+          p.fill(currentColor);
+          p.rectMode(p.CENTER);
+          p.rect(point.pos.x, point.pos.y, point.radius * 2, point.radius * 2);
+        }
 
+        // Dragging feedback
         if (isDragging) {
-          let dragDistance = p.dist(p.mouseX, p.mouseY, point.pos.x, point.pos.y);
-
-          let dynamicRadius = Math.max(dragDistance, 50);
-
-          // Draw a circle around the point to show the drag range
+          const mouseWorld = getMouseWorld();
+          const dragDistance = p.dist(mouseWorld.x, mouseWorld.y, point.pos.x, point.pos.y);
+          const dynamicRadius = Math.max(dragDistance, 50);
           p.stroke(100);
           p.noFill();
           p.ellipse(point.pos.x, point.pos.y, dynamicRadius * 2);
-
-          // Calculate the launch direction
-          launchDirection = p.createVector(point.pos.x, point.pos.y).sub(p.createVector(p.mouseX, p.mouseY)).normalize().mult(dynamicRadius);
-
-          // Draw the launch line
+          launchDirection = p.createVector(point.pos.x, point.pos.y)
+            .sub(mouseWorld)
+            .normalize()
+            .mult(dynamicRadius);
           p.stroke(255);
-          p.line(point.pos.x, point.pos.y, point.pos.x + launchDirection.x, point.pos.y + launchDirection.y);
+          p.line(
+            point.pos.x,
+            point.pos.y,
+            point.pos.x + launchDirection.x,
+            point.pos.y + launchDirection.y
+          );
         }
 
-        // Handle point movement
+        p.pop();
+
+        // Point movement
         if (point.isFlying) {
           point.pos.add(point.vel);
-
-          point.vel.mult(0.98); // Apply friction
-
+          point.vel.mult(0.98); // Friction
           if (point.vel.mag() < 0.01) {
             point.vel.set(0, 0);
             point.isFlying = false;
-
-            staticPositions.push({ pos: point.pos.copy(), color: currentColor, type: point.type, step: point.step });
-          }
-
-          if (point.pos.x - point.radius < 0 || point.pos.x + point.radius > p.width) {
-            point.vel.x *= -0.8;
-          }
-          if (point.pos.y - point.radius < 0 || point.pos.y + point.radius > p.height) {
-            point.vel.y *= -0.8;
+            staticPositions.push({
+              pos: point.pos.copy(),
+              color: currentColor,
+              type: point.type,
+              step: point.step,
+            });
+            // Update point position to the new static position
+            point.pos = point.pos.copy();
           }
         }
       };
 
-      p.mousePressed = () => {
-        let d = p.dist(p.mouseX, p.mouseY, point.pos.x, point.pos.y);
-        if (d < point.radius && !point.isFlying) {
-          isDragging = true;
+      p.mousePressed = (event: MouseEvent) => {
+        if (mouseInCanvas()) {
+          if (p.keyIsDown(p.SHIFT)) {
+            // Start panning
+            isPanning = true;
+            panStartX = p.mouseX;
+            panStartY = p.mouseY;
+            panStartTranslateX = translateX;
+            panStartTranslateY = translateY;
+          } else {
+            // Start dragging
+            if (!point.isFlying) {
+              const mouseWorld = getMouseWorld();
+              const lastPos = staticPositions[staticPositions.length - 1].pos;
+              const d = p.dist(mouseWorld.x, mouseWorld.y, lastPos.x, lastPos.y);
+              if (d < point.radius) {
+                isDragging = true;
+                point.pos = lastPos.copy();
+              }
+            }
+          }
+        }
+      };
+
+      p.mouseDragged = (event: MouseEvent) => {
+        if (isPanning) {
+          // Calculate the amount of movement
+          let dx = (p.mouseX - panStartX) / scaleFactor;
+          let dy = (p.mouseY - panStartY) / scaleFactor;
+
+          // Update the translation
+          translateX = panStartTranslateX + dx;
+          translateY = panStartTranslateY + dy;
+
+          // Prevent default dragging behavior within the canvas
+          event.preventDefault();
         }
       };
 
       p.mouseReleased = async () => {
-        if (isDragging) {
+        if (isPanning) {
+          isPanning = false;
+        } else if (isDragging) {
           isDragging = false;
           point.isFlying = true;
-
-          let force = p5.Vector.sub(point.pos, p.createVector(p.mouseX, p.mouseY));
-          point.step = Math.round(force.mag()); // Store the magnitude of the launch
+          const mouseWorld = getMouseWorld();
+          const force = p5.Vector.sub(point.pos, mouseWorld);
+          // arbitrarily decrease point step - divided by 50!
+          point.step = Math.round(force.mag() / 50);
+          // if point.step is less than 1, set it to 1
+          point.step = point.step < 1 ? 1 : point.step;
           point.vel = force.mult(0.02);
-
-          // Determine the direction of launch
-          let dragVector = p.createVector(p.mouseX, p.mouseY).sub(point.pos);
+          const dragVector = p5.Vector.sub(mouseWorld, point.pos);
           point.type = dragVector.x > 0 ? "red" : "blue";
-          currentColor = point.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Update color
-
-          // Create a new ImageDoc
+          currentColor = point.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255);
           const coordinate = `${Math.round(point.pos.x)},${Math.round(point.pos.y)}`;
-          const stepString = point.step.toString(); // Convert step to string
+          const stepString = point.step.toString();
+          await createImageDoc(coordinate, point.type, stepString);
+        }
+      };
 
-          try {
-            await createImageDoc(coordinate, point.type, stepString);
-          } catch (error) {
-            console.error("Error creating ImageDoc:", error);
+      p.mouseWheel = (event: WheelEvent) => {
+        if (mouseInCanvas()) {
+          // Check if Ctrl or Cmd key is pressed for zooming
+          if (event.ctrlKey || event.metaKey) {
+            // Zooming
+            let zoomAmount = event.deltaY * -0.001;
+            scaleFactor += zoomAmount;
+            scaleFactor = p.constrain(scaleFactor, minScale, maxScale);
+
+            // Adjust translateX and translateY to keep the focus on the mouse position
+            let mouseXWorld = (p.mouseX - translateX - p.width / 2) / scaleFactor;
+            let mouseYWorld = (p.mouseY - translateY - p.height / 2) / scaleFactor;
+            translateX -= mouseXWorld * zoomAmount;
+            translateY -= mouseYWorld * zoomAmount;
+
+            // Prevent default zooming behavior
+            event.preventDefault();
           }
         }
       };
 
       p.windowResized = () => {
-        p.resizeCanvas(p.windowWidth, p.windowHeight);
+        canvasWidth = p.windowWidth - 40;
+        canvasHeight = p.windowHeight - 120;
+        p.resizeCanvas(canvasWidth, canvasHeight);
       };
+
+      function mouseInCanvas() {
+        return p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
+      }
+    });
+
+    onUnmounted(() => {
+      sketch.remove();
     });
   }
 });
 </script>
 
 <template>
-  <div ref="canvasContainer" class="canvas-wrapper"></div>
+  <div ref="canvasContainer" class="canvas-container"></div>
 </template>
 
 <style scoped>
-.canvas-wrapper {
-  width: 100vw;
-  height: 100vh;
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px;
+  padding: 20px;
+  background: #2e2e2e;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
 }
 </style>
