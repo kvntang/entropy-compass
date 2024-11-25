@@ -81,10 +81,16 @@ class Routes {
 
   @Router.get("/images/author/:author")
   async getImagesByAuthor(author: string) {
-    console.log("hi");
     const id = new ObjectId(author); // Convert string to ObjectId
     const images = await Imaging.getImagesByAuthor(id); // Fetch images by author ID
     return { images };
+  }
+
+  @Router.delete("/images/author/:authorId")
+  async deleteImagesByAuthor(authorId: string) {
+    const author = new ObjectId(authorId);
+    await Imaging.deleteAllByAuthor(author); // Imaging is your concept class
+    return { msg: "All images deleted successfully!" };
   }
 }
 

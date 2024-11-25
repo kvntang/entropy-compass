@@ -35,7 +35,7 @@ const createImageDoc = async (coordinate: string, type: string, step: string) =>
       },
     });
 
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}`);
+    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}`);
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }

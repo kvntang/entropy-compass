@@ -4,6 +4,7 @@ import twoDCanvasComponent from "@/components/Canvas/twoDCanvasComponent_2.vue";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, ref } from "vue";
+import deleteButton from "../components/Canvas/deleteButton.vue";
 import { fetchy } from "../utils/fetchy.js";
 
 // Define props
@@ -60,6 +61,7 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas!!!!!" : "2D 
     </section>
     <!-- Conditionally render the canvas components and message -->
     <section v-if="isLoggedIn">
+      <deleteButton @refreshImages="refreshImages" />
       <h2>{{ canvasMessage }}</h2>
       <section v-if="loading">Loading images...</section>
       <section v-else-if="error">{{ error }}</section>
