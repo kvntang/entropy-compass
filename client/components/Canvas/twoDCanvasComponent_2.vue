@@ -100,6 +100,7 @@ onMounted(() => {
 
         // Initialize point at the last position
         const lastPos = staticPositions[staticPositions.length - 1].pos;
+        console.log(`initial position ${lastPos}`);
         point = {
           pos: lastPos.copy(),
           radius: 20,
@@ -150,6 +151,11 @@ onMounted(() => {
           p.stroke(100);
           p.noFill();
           p.ellipse(point.pos.x, point.pos.y, dynamicRadius * 2);
+          // Calculate the horizontal edge of the circle
+          const circleEdgeX = point.pos.x - dynamicRadius * (mouseWorld.x > point.pos.x ? 1 : -1);
+
+          // Draw the horizontal line from the center of the box to the edge of the circle
+          p.line(point.pos.x, point.pos.y, circleEdgeX, point.pos.y);
           launchDirection = p.createVector(point.pos.x, point.pos.y).sub(mouseWorld).normalize().mult(dynamicRadius);
           p.stroke(255);
           p.line(point.pos.x, point.pos.y, point.pos.x + launchDirection.x, point.pos.y + launchDirection.y);
@@ -190,6 +196,7 @@ onMounted(() => {
             if (!point.isFlying) {
               const mouseWorld = getMouseWorld();
               const lastPos = staticPositions[staticPositions.length - 1].pos;
+              console.log(`start position ${lastPos}`);
               const d = p.dist(mouseWorld.x, mouseWorld.y, lastPos.x, lastPos.y);
               if (d < point.radius) {
                 isDragging = true;
@@ -223,8 +230,8 @@ onMounted(() => {
           point.isFlying = true;
           const mouseWorld = getMouseWorld();
           const force = p5.Vector.sub(point.pos, mouseWorld);
-          // arbitrarily decrease point step - divided by 50!
-          point.step = Math.round(force.mag() / 50);
+          // step is calculated here!
+          point.step = Math.round(force.mag());
           // if point.step is less than 1, set it to 1
           point.step = point.step < 1 ? 1 : point.step;
           point.vel = force.mult(0.02);
@@ -232,6 +239,7 @@ onMounted(() => {
           point.type = dragVector.x > 0 ? "red" : "blue";
           currentColor = point.type === "red" ? p.color(255, 0, 0) : p.color(0, 0, 255);
           const coordinate = `${Math.round(point.pos.x)},${Math.round(point.pos.y)}`;
+          console.log(`final position ${coordinate}`);
           const stepString = point.step.toString();
           await createImageDoc(coordinate, point.type, stepString);
         }
