@@ -37,7 +37,7 @@ onMounted(() => {
       let panStartTranslateX = 0;
       let panStartTranslateY = 0;
       const gridSize = 40;
-      const padding = 0; 
+      const padding = 0;
       const stepDistance = 35;
 
       // Zoom and pan
@@ -64,8 +64,8 @@ onMounted(() => {
 
       p.setup = () => {
         // Adjust the canvas size to fit within the window canvas
-        const canvasWidth = p.windowWidth - 40; 
-        const canvasHeight = p.windowHeight - 120; 
+        const canvasWidth = p.windowWidth - 40;
+        const canvasHeight = p.windowHeight - 120;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(canvasContainer.value);
 
@@ -108,9 +108,7 @@ onMounted(() => {
         for (let img of images) {
           // Handle elastic animation
           if (img.isAnimating) {
-            let t = img.animationStartTime
-              ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1)
-              : 0;
+            let t = img.animationStartTime ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1) : 0;
             t = p.constrain(t, 0, 1);
             let easeT = easeOutElastic(t);
 
@@ -127,20 +125,12 @@ onMounted(() => {
             img.currentY = img.y;
           }
 
-          p.fill(
-            img.isNoisy
-              ? p.color(255, 0, 0, img.alpha)
-              : p.color(0, 0, 255, img.alpha)
-          );
+          p.fill(img.isNoisy ? p.color(255, 0, 0, img.alpha) : p.color(0, 0, 255, img.alpha));
           p.rect(img.x, img.currentY, gridSize, gridSize);
 
           // Display the number on top of the image
           p.fill(255);
-          p.text(
-            img.number,
-            img.x + gridSize / 2,
-            img.currentY + gridSize / 2
-          );
+          p.text(img.number, img.x + gridSize / 2, img.currentY + gridSize / 2);
         }
 
         // Draw drag preview
@@ -156,10 +146,7 @@ onMounted(() => {
 
           let lastImage = images[images.length - 1];
 
-          if (
-            Math.abs(dragDistanceY) > Math.abs(dragDistanceX) &&
-            dragDistanceY > 0
-          ) {
+          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > 0) {
             // Vertical dragging (editing)
             let lineX = lastImage.x + gridSize / 2;
             let lineStartY = lastImage.y + gridSize / 2;
@@ -170,28 +157,17 @@ onMounted(() => {
             p.line(lineX, lineStartY, lineX, mouseYWorld);
 
             // Calculate steps (number of grid units dragged)
-            let steps = Math.floor(
-              (mouseYWorld - lineStartY) / (gridSize + padding)
-            );
+            let steps = Math.floor((mouseYWorld - lineStartY) / (gridSize + padding));
             steps = Math.max(1, steps); // Ensure at least one step
 
             // Image follows the mouse vertically, centered
             p.noStroke();
             p.fill(lastImage.isNoisy ? p.color(255, 0, 0) : p.color(0, 0, 255));
-            p.rect(
-              lastImage.x, 
-              lastImage.y + dragDistanceY, 
-              gridSize, 
-              gridSize
-            );
+            p.rect(lastImage.x, lastImage.y + dragDistanceY, gridSize, gridSize);
 
             // Display number (incremented by steps)
             p.fill(255);
-            p.text(
-              lastImage.number + steps,
-              lastImage.x + gridSize / 2,
-              lastImage.y + dragDistanceY + gridSize / 2
-            );
+            p.text(lastImage.number + steps, lastImage.x + gridSize / 2, lastImage.y + dragDistanceY + gridSize / 2);
           } else if (Math.abs(dragDistanceX) > 0) {
             // Horizontal dragging
             let steps = Math.floor(Math.abs(dragDistanceX) / stepDistance);
@@ -204,25 +180,15 @@ onMounted(() => {
             // Draw preview line centered on the square
             p.stroke(255);
             p.strokeWeight(2 / scaleFactor);
-            p.line(
-              lineX,
-              lineY,
-              mouseXWorld,
-              lineY
-            );
+            p.line(lineX, lineY, mouseXWorld, lineY);
 
             // Draw preview square
             p.noFill();
-            p.stroke(
-              dragDistanceX < 0 ? p.color(255, 0, 0) : p.color(0, 0, 255)
-            );
+            p.stroke(dragDistanceX < 0 ? p.color(255, 0, 0) : p.color(0, 0, 255));
             p.strokeWeight(1 / scaleFactor);
             let previewX = lastImage.x;
             if (direction === "noise") {
-              previewX = Math.max(
-                padding,
-                lastImage.x - steps * (gridSize + padding)
-              );
+              previewX = Math.max(padding, lastImage.x - steps * (gridSize + padding));
             } else {
               previewX = lastImage.x + steps * (gridSize + padding);
             }
@@ -230,11 +196,7 @@ onMounted(() => {
 
             // Display number on preview
             p.fill(255);
-            p.text(
-              lastImage.number,
-              previewX + gridSize / 2,
-              lastImage.y + gridSize / 2
-            );
+            p.text(lastImage.number, previewX + gridSize / 2, lastImage.y + gridSize / 2);
           }
         }
 
@@ -288,18 +250,13 @@ onMounted(() => {
           let dragDistanceX = mouseXWorld - dragStartXWorld;
           let dragDistanceY = mouseYWorld - dragStartYWorld;
 
-          if (
-            Math.abs(dragDistanceY) > Math.abs(dragDistanceX) &&
-            dragDistanceY > 0
-          ) {
+          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > 0) {
             // Vertical dragging (editing)
             let lastImage = images[images.length - 1];
 
             // Calculate steps
             let lineStartY = lastImage.y + gridSize / 2;
-            let steps = Math.floor(
-              (mouseYWorld - lineStartY) / (gridSize + padding)
-            );
+            let steps = Math.floor((mouseYWorld - lineStartY) / (gridSize + padding));
             steps = Math.max(1, steps);
 
             // The image snaps back to just the next row
@@ -339,10 +296,7 @@ onMounted(() => {
 
               if (dragDistanceX < 0) {
                 // Add noise (move left)
-                newX = Math.max(
-                  padding,
-                  lastImage.x - steps * (gridSize + padding)
-                );
+                newX = Math.max(padding, lastImage.x - steps * (gridSize + padding));
               } else {
                 // Denoise (move right)
                 newX = lastImage.x + steps * (gridSize + padding);
@@ -414,7 +368,6 @@ onMounted(() => {
         }
       };
 
-
       p.windowResized = () => {
         // Adjust the canvas size on window resize
         const canvasWidth = p.windowWidth - 40;
@@ -423,7 +376,7 @@ onMounted(() => {
 
         // Recalculate and update the initial square position
         const { initialX, initialY } = calculateInitialPosition(canvasWidth, canvasHeight);
-        
+
         if (images.length > 0) {
           images[0].x = initialX;
           images[0].y = initialY;
@@ -453,7 +406,6 @@ onMounted(() => {
   }
 });
 </script>
-
 
 <template>
   <div ref="canvasContainer" class="canvas-container"></div>

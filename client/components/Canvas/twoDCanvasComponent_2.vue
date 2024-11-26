@@ -42,9 +42,7 @@ const createImageDoc = async (coordinate: string, type: string, step: string) =>
         promptedImage: "",
       },
     });
-    console.log(
-      `ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}`
-    );
+    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}`);
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
@@ -115,11 +113,8 @@ onMounted(() => {
       };
 
       function getMouseWorld() {
-        return p.createVector(
-          (p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x,
-          (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y
-        );
-      };
+        return p.createVector((p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x, (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y);
+      }
 
       p.draw = () => {
         p.background(10);
@@ -155,17 +150,9 @@ onMounted(() => {
           p.stroke(100);
           p.noFill();
           p.ellipse(point.pos.x, point.pos.y, dynamicRadius * 2);
-          launchDirection = p.createVector(point.pos.x, point.pos.y)
-            .sub(mouseWorld)
-            .normalize()
-            .mult(dynamicRadius);
+          launchDirection = p.createVector(point.pos.x, point.pos.y).sub(mouseWorld).normalize().mult(dynamicRadius);
           p.stroke(255);
-          p.line(
-            point.pos.x,
-            point.pos.y,
-            point.pos.x + launchDirection.x,
-            point.pos.y + launchDirection.y
-          );
+          p.line(point.pos.x, point.pos.y, point.pos.x + launchDirection.x, point.pos.y + launchDirection.y);
         }
 
         p.pop();
