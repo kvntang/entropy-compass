@@ -37,12 +37,7 @@ const deleteAllImages = async () => {
 
 <template>
   <div class="delete-button-container">
-    <button 
-      @click="deleteAllImages" 
-      :disabled="isLoading" 
-      class="delete-button"
-      :class="{ 'button-loading': isLoading }"
-    >
+    <button @click="deleteAllImages" :disabled="isLoading" class="delete-button" :class="{ 'button-loading': isLoading }">
       <span class="button-text">{{ isLoading ? "Deleting..." : "Delete All Images" }}</span>
     </button>
 
@@ -118,7 +113,13 @@ const deleteAllImages = async () => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
