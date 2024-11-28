@@ -8,7 +8,7 @@ import p5 from "p5";
  * @param angleIncrement - The snapping increment for angles.
  * @returns An object containing type, color, promptIndex, and logMessage.
  */
-export function getMovementDetails(snappedAngleDegrees: number, angleIncrement: number) {
+export default function getMovementDetails(snappedAngleDegrees: number, angleIncrement: number) {
   let type = "";
   let currentColor: p5.Color;
   let promptIndex = 0;
