@@ -432,6 +432,10 @@ onMounted(() => {
           const stepString = step.toString();
 
           const lastPos = staticPositions[staticPositions.length - 1];
+          if (!lastPos._id) {
+            console.error("Parent ID is undefined. Skipping ImageDoc creation.");
+            return;
+          }
           const parentId = lastPos._id;
 
           console.log(`Parent ID is: ${parentId}`);
