@@ -59,61 +59,39 @@ const createImageDoc = async (coordinate: string, type: string, step: string, pr
 };
 
 /**
- * Determine type, color, and promptIndex based on snapped angle degrees.
- *
- * @param snappedAngleDegrees - The snapped angle in degrees.
- * @param angleIncrement - The snapping increment for angles.
- * @returns An object containing type, color, promptIndex, and logMessage.
+ * Function to set the index logic.
+ * The type determines the ordering of the index, which will be mapped to the similarity of the prompted word.
  */
-function getMovementDetails(snappedAngleDegrees: number, angleIncrement: number) {
-  let type = "";
-  let currentColor: p5.Color;
+function getPromptIndex(type: string, snappedAngleDegrees: number) {
   let promptIndex = 0;
-  let logMessage = "";
 
-  const p = new p5(() => {}); // Create a p5 instance for color creation
-
-  if (snappedAngleDegrees === 0 || snappedAngleDegrees === 180) {
-    // Pure horizontal movement
-    promptIndex = 0;
+  if (type === "noise") {
     if (snappedAngleDegrees === 0) {
-      // Moving right
-      type = "noise";
-      currentColor = p.color(255, 0, 0); // Red
-      logMessage = `Noised, promptIndex: ${promptIndex}`;
-    } else {
-      // Moving left
-      type = "denoise";
-      currentColor = p.color(0, 0, 255); // Blue
-      logMessage = `Denoised, promptIndex: ${promptIndex}`;
+      promptIndex = 0;
+    } else if (snappedAngleDegrees > 0 && snappedAngleDegrees <= 180) {
+      // upper circle
+      promptIndex = Math.ceil(snappedAngleDegrees / 10) * 2 - 1; // Converts 10° to 1, 20° to 3, etc.
+    } else if (snappedAngleDegrees > 180) {
+      // lower circle
+      promptIndex = Math.ceil((360 - snappedAngleDegrees) / 10) * 2;
     }
-  } else {
-    // Angled movement
-    if (snappedAngleDegrees > 90 && snappedAngleDegrees < 270) {
-      // Moving left at an angle
-      type = "denoise";
-      currentColor = p.color(0, 0, 255); // Blue
-      logMessage = `Denoised, promptIndex: `;
-    } else {
-      // Moving right at an angle
-      type = "noise";
-      currentColor = p.color(255, 0, 0); // Red
-      logMessage = `Noised, promptIndex: `;
+  } else if (type === "denoise") {
+    if (snappedAngleDegrees === 180) {
+      promptIndex = 0;
+    } else if (snappedAngleDegrees < 180) {
+      // upper circle
+      promptIndex = Math.ceil((180 - snappedAngleDegrees) / 10) * 2 - 1;
+    } else if (snappedAngleDegrees > 180) {
+      // lower circle
+      promptIndex = Math.ceil((snappedAngleDegrees - 180) / 10) * 2;
     }
-
-    // Calculate prompt index based on angle deviation from horizontal
-    let deviation = snappedAngleDegrees % 180; // 0 to 180
-    deviation = deviation > 90 ? 180 - deviation : deviation; // 0 to 90
-    promptIndex = Math.floor(deviation / angleIncrement); // 0 to 9
-
-    // Ensure promptIndex is at least 1 for angled moves
-    promptIndex = Math.max(promptIndex, 1);
-
-    logMessage += `${promptIndex}`;
   }
 
-  return { type, currentColor, promptIndex, logMessage };
+  // Return the calculated promptIndex
+  return { promptIndex: Math.floor(promptIndex) };
 }
+
+//--------------------------------------------------------------------------------------------------------------
 
 onMounted(() => {
   if (canvasContainer.value) {
@@ -131,6 +109,7 @@ onMounted(() => {
       }[] = [];
       let currentColor: p5.Color;
       let initialPosition: p5.Vector;
+      let initialDragDirection: "right" | "left" | null = null; //determines noise or denoise
 
       // Camera variables
       let camPos = p.createVector(0, 0); // Camera position for panning
@@ -272,10 +251,18 @@ onMounted(() => {
           let lineEnd = p5.Vector.add(point.pos, direction.mult(dynamicRadius));
           p.line(point.pos.x, point.pos.y, lineEnd.x, lineEnd.y);
 
-          // Draw the angle index
-          const { promptIndex } = getMovementDetails(snappedAngleDegrees, angleIncrement);
+          p.stroke(0);
+          p.fill(255);
           p.textSize(32);
+
+          // Draw launch type
+          p.text(point.type, point.pos.x, point.pos.y);
+
+          // Draw the angle index
+          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
           p.text(promptIndex, lineEnd.x, lineEnd.y);
+          p.textSize(20);
+          p.text("Pick a prompt! The lower the number, \n the more similar to the original prompt.", point.pos.x, point.pos.y - dynamicRadius - 30);
         }
 
         p.pop();
@@ -325,6 +312,9 @@ onMounted(() => {
               if (d < point.radius) {
                 isDragging = true;
                 point.pos = lastPos.copy();
+                console.log("Dragging started, isDragging set to true");
+              } else {
+                console.log("Mouse press outside drag radius");
               }
             }
           }
@@ -344,6 +334,30 @@ onMounted(() => {
           // Prevent default dragging behavior within the canvas
           event.preventDefault();
         }
+
+        if (isDragging) {
+          const mouseWorld = getMouseWorld();
+          const dragVector = p5.Vector.sub(mouseWorld, point.pos);
+
+          // Determine type based on shooting direction
+          // Lock the initial drag direction based on the horizontal movement
+          if (!initialDragDirection) {
+            console.log(`Drag Vector: (${dragVector.x}, ${dragVector.y})`);
+            if (dragVector.x > 20) {
+              initialDragDirection = "right";
+              currentColor = p.color(255, 0, 0); // Red for noise
+              point.type = "noise";
+              console.log("Drag started to the right: Setting type to noise");
+            } else if (dragVector.x < 0) {
+              initialDragDirection = "left";
+              currentColor = p.color(0, 0, 255); // Blue for denoise
+              point.type = "denoise";
+              console.log("Drag started to the left: Setting type to denoise");
+            } else {
+              console.log("Drag vector X is zero or too small to determine direction");
+            }
+          }
+        }
       };
 
       p.mouseReleased = async () => {
@@ -351,6 +365,20 @@ onMounted(() => {
           isPanning = false;
         } else if (isDragging) {
           isDragging = false;
+
+          // Debug
+          if (initialDragDirection) {
+            console.log(`Final drag direction: ${initialDragDirection}`);
+          } else {
+            console.error("Drag direction was not determined!");
+          }
+
+          // Use the locked initial drag direction to finalize the type
+          const type = initialDragDirection === "right" ? "noise" : "denoise";
+          point.type = type;
+
+          // Reset drag direction for the next drag
+          initialDragDirection = null;
 
           const mouseWorld = getMouseWorld();
           const dragVector = p5.Vector.sub(mouseWorld, point.pos);
@@ -369,17 +397,16 @@ onMounted(() => {
 
           // let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
-          // Determine type based on shooting direction
-          const details = getMovementDetails(snappedAngleDegrees, angleIncrement);
-          let type = "";
           let logMessage = "";
-          let promptIndex = 0;
+          let finalPromptIndex = 0;
 
-          type = details.type;
-          currentColor = details.currentColor;
-          promptIndex = details.promptIndex;
+          // Set color of latest box
+          if (point.type == "denoise") {
+            currentColor = p.color(0, 0, 255); // blue "denoise"
+          } else {
+            currentColor = p.color(255, 0, 0); // Red for "noise"
+          }
 
-          logMessage = details.logMessage;
           console.log(logMessage);
 
           // Set the step as the magnitude of the drag vector
@@ -393,8 +420,9 @@ onMounted(() => {
 
           // Assign final position and properties to point
           point.finalPos = finalPos.copy();
-          point.type = type;
-          point.promptIndex = promptIndex;
+          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
+          finalPromptIndex = promptIndex;
+          point.promptIndex = finalPromptIndex;
           point.step = step;
           point.isMoving = true;
 
