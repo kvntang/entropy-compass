@@ -12,6 +12,7 @@ import { fetchy } from "../../utils/fetchy";
 
 interface ImageDoc {
   author: string;
+  parent: string;
   coordinate: string; // stored as x, y
   prompt: string;
   type: string;
@@ -189,6 +190,16 @@ onMounted(() => {
         p.translate(p.width / 2, p.height / 2);
         p.scale(scaleFactor);
         p.translate(translateX, translateY);
+
+        // Draw lines between consecutive static positions
+        for (let i = 0; i < staticPositions.length - 1; i++) {
+          const start = staticPositions[i].pos;
+          const end = staticPositions[i + 1].pos;
+
+          // Set stroke style based on types of points
+          p.stroke(150);
+          p.line(start.x, start.y, end.x, end.y);
+        }
 
         // Draw all static positions
         staticPositions.forEach((sp) => {

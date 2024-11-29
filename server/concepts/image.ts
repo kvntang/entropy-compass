@@ -5,6 +5,7 @@ import { NotAllowedError, NotFoundError } from "./errors";
 
 export interface ImageDoc extends BaseDoc {
   author: ObjectId;
+  parent: ObjectId;
   coordinate: string; // "x,y" position
   prompt: string;
   type: string; // "red" or "blue" based on direction
