@@ -162,7 +162,6 @@ onMounted(() => {
 
         // Initialize point at the last position
         const lastPos = staticPositions[staticPositions.length - 1].pos;
-        console.log(`Initial position: (${lastPos.x}, ${lastPos.y})`);
         point = {
           pos: lastPos.copy(),
           radius: 20,
@@ -307,14 +306,10 @@ onMounted(() => {
             if (!point.isMoving) {
               const mouseWorld = getMouseWorld();
               const lastPos = staticPositions[staticPositions.length - 1].pos;
-              console.log(`Start position: (${lastPos.x}, ${lastPos.y})`);
               const d = p.dist(mouseWorld.x, mouseWorld.y, lastPos.x, lastPos.y);
               if (d < point.radius) {
                 isDragging = true;
                 point.pos = lastPos.copy();
-                console.log("Dragging started, isDragging set to true");
-              } else {
-                console.log("Mouse press outside drag radius");
               }
             }
           }
@@ -342,19 +337,14 @@ onMounted(() => {
           // Determine type based on shooting direction
           // Lock the initial drag direction based on the horizontal movement
           if (!initialDragDirection) {
-            console.log(`Drag Vector: (${dragVector.x}, ${dragVector.y})`);
             if (dragVector.x > 20) {
               initialDragDirection = "right";
               currentColor = p.color(255, 0, 0); // Red for noise
               point.type = "noise";
-              console.log("Drag started to the right: Setting type to noise");
             } else if (dragVector.x < 0) {
               initialDragDirection = "left";
               currentColor = p.color(0, 0, 255); // Blue for denoise
               point.type = "denoise";
-              console.log("Drag started to the left: Setting type to denoise");
-            } else {
-              console.log("Drag vector X is zero or too small to determine direction");
             }
           }
         }
@@ -365,13 +355,6 @@ onMounted(() => {
           isPanning = false;
         } else if (isDragging) {
           isDragging = false;
-
-          // Debug
-          if (initialDragDirection) {
-            console.log(`Final drag direction: ${initialDragDirection}`);
-          } else {
-            console.error("Drag direction was not determined!");
-          }
 
           // Use the locked initial drag direction to finalize the type
           const type = initialDragDirection === "right" ? "noise" : "denoise";
@@ -397,7 +380,6 @@ onMounted(() => {
 
           // let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
-          let logMessage = "";
           let finalPromptIndex = 0;
 
           // Set color of latest box
@@ -406,8 +388,6 @@ onMounted(() => {
           } else {
             currentColor = p.color(255, 0, 0); // Red for "noise"
           }
-
-          console.log(logMessage);
 
           // Set the step as the magnitude of the drag vector
           let step = dragVector.mag();
@@ -430,9 +410,6 @@ onMounted(() => {
           const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
           const stepString = step.toString();
           await createImageDoc(coordinate, point.type, stepString, point.promptIndex);
-
-          // Log the action with promptIndex
-          console.log(logMessage);
         }
       };
 
