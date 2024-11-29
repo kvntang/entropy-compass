@@ -1,9 +1,6 @@
-<!-- interactions:
- shift to pan
- drag to move
- command or control to zoom -->
-<!-- step is actual pixel moved; PromptIndex is calculated from angle deviation from horizontal; coordinates is world coordinates -->
-<!-- 10 degrees snapping implemented -->
+<template>
+  <div ref="canvasContainer" class="canvas-container"></div>
+</template>
 
 <script setup lang="ts">
 import p5 from "p5";
@@ -12,7 +9,7 @@ import { fetchy } from "../../utils/fetchy";
 
 interface ImageDoc {
   author: string;
-  parent: string;
+  parent: string; // Parent ImageDoc ID
   coordinate: string; // stored as x, y
   prompt: string;
   type: string;
@@ -29,22 +26,30 @@ const props = defineProps<{
 
 const emit = defineEmits(["refreshImages"]);
 
-console.log("Received images in child:", props.images);
+// Note: We are removing the addition of props.images to staticPositions
+// to prevent conflicts and resetting of state.
 
 const canvasContainer = ref(null);
 
 /**
  * Create a new ImageDoc.
  *
+ * @param parentId - The ID of the parent ImageDoc.
  * @param coordinate - The coordinate of the image in the 2D canvas.
  * @param type - The type of the image ("noise" or "denoise").
  * @param step - The step of the image in the prompt.
  * @param promptIndex - The prompt index calculated from angle deviation.
  */
-const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number) => {
+const createImageDoc = async (
+  parentId: string,
+  coordinate: string,
+  type: string,
+  step: string,
+  promptIndex: number
+) => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
-    await fetchy("/api/images", "POST", {
+    const response = await fetchy("/api/images", "POST", {
       body: {
         author: authorId,
         parent: parentId,
@@ -57,8 +62,11 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
         promptedImage: "",
       },
     });
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
-    emit("refreshImages"); //let the parent know, so canvas knows about the newly added ImageDoc
+    console.log(
+      `ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`
+    );
+    // Removed emit("refreshImages") to prevent potential state resets.
+    // emit("refreshImages"); // Let the parent know to refresh the images
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
@@ -75,20 +83,20 @@ function getPromptIndex(type: string, snappedAngleDegrees: number) {
     if (snappedAngleDegrees === 0) {
       promptIndex = 0;
     } else if (snappedAngleDegrees > 0 && snappedAngleDegrees <= 180) {
-      // upper circle
+      // Upper circle
       promptIndex = Math.ceil(snappedAngleDegrees / 10) * 2 - 1; // Converts 10° to 1, 20° to 3, etc.
     } else if (snappedAngleDegrees > 180) {
-      // lower circle
+      // Lower circle
       promptIndex = Math.ceil((360 - snappedAngleDegrees) / 10) * 2;
     }
   } else if (type === "denoise") {
     if (snappedAngleDegrees === 180) {
       promptIndex = 0;
     } else if (snappedAngleDegrees < 180) {
-      // upper circle
+      // Upper circle
       promptIndex = Math.ceil((180 - snappedAngleDegrees) / 10) * 2 - 1;
     } else if (snappedAngleDegrees > 180) {
-      // lower circle
+      // Lower circle
       promptIndex = Math.ceil((snappedAngleDegrees - 180) / 10) * 2;
     }
   }
@@ -103,9 +111,10 @@ onMounted(() => {
   if (canvasContainer.value) {
     const sketch = new p5((p) => {
       // Variables
-      let point: any; // Represents the moving square
-      let isDragging = false;
+      let point: any; // Represents the moving square (for shooting)
+      let isDraggingNew = false; // Flag for dragging to create new ImageDoc
       let isPanning = false;
+
       let staticPositions: {
         pos: p5.Vector;
         color: p5.Color;
@@ -113,10 +122,12 @@ onMounted(() => {
         step: number;
         promptIndex?: number;
         _id?: string;
+        parent_id?: string;
       }[] = [];
+
       let currentColor: p5.Color;
       let initialPosition: p5.Vector;
-      let initialDragDirection: "right" | "left" | null = null; //determines noise or denoise
+      let initialDragDirection: "right" | "left" | null = null; // Determines noise or denoise
 
       // Camera variables
       let camPos = p.createVector(0, 0); // Camera position for panning
@@ -129,6 +140,9 @@ onMounted(() => {
       let panStartY = 0;
       let panStartTranslateX = 0;
       let panStartTranslateY = 0;
+
+      // Selected parent ID for creating new ImageDocs
+      let selectedParentId: string | null = null;
 
       p.setup = () => {
         const canvasWidth = p.windowWidth - 40;
@@ -145,34 +159,20 @@ onMounted(() => {
           color: p.color(0, 0, 255), // Blue color for "denoise"
           type: "denoise",
           step: 0,
-          _id: "0000000", //in the final, the initial would need a real _id as well
+          _id: "0000000", // In the final, the initial would need a real _id as well
+          parent_id: undefined, // No parent for the initial node
         });
 
-        // Add any existing positions from props
-        props.images.forEach((image) => {
-          const [x, y] = image.coordinate.split(",").map(Number);
-          let color: p5.Color;
-          if (image.type === "noise") {
-            color = p.color(255, 0, 0); // Red for "noise"
-          } else if (image.type === "denoise") {
-            color = p.color(0, 0, 255); // Blue for "denoise"
-          } else {
-            color = p.color(255); // Default color
-          }
-          staticPositions.push({
-            pos: p.createVector(x, y),
-            color,
-            type: image.type,
-            step: Number(image.step),
-            promptIndex: Number(image.prompt),
-            _id: image._id,
-          });
-        });
+        // Set the initial parent to the first node
+        selectedParentId = "0000000";
 
-        // Initialize point at the last position
-        const lastPos = staticPositions[staticPositions.length - 1].pos;
+        // Note: Removed adding props.images to staticPositions
+        // to prevent resetting or duplication.
+
+        // Initialize point at the selected parent's position
+        const parentPos = getSelectedParentPosition();
         point = {
-          pos: lastPos.copy(),
+          pos: parentPos.copy(),
           radius: 20,
           isMoving: false, // Flag to indicate movement towards final position
           finalPos: null, // Target position after move
@@ -187,7 +187,10 @@ onMounted(() => {
        * Convert mouse coordinates to world coordinates considering camera transformations.
        */
       function getMouseWorld() {
-        return p.createVector((p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x, (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y);
+        return p.createVector(
+          (p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x,
+          (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y
+        );
       }
 
       p.draw = () => {
@@ -199,42 +202,76 @@ onMounted(() => {
         p.scale(scaleFactor);
         p.translate(translateX, translateY);
 
-        // Draw lines between consecutive static positions
-        for (let i = 0; i < staticPositions.length - 1; i++) {
-          const start = staticPositions[i].pos;
-          const end = staticPositions[i + 1].pos;
+        // Create a map for quick parent lookup
+        const idToPosition: { [key: string]: p5.Vector } = {};
+        staticPositions.forEach((sp) => {
+          if (sp._id) {
+            idToPosition[sp._id] = sp.pos;
+          }
+        });
 
-          // Set stroke style based on types of points
-          p.stroke(150);
-          p.line(start.x, start.y, end.x, end.y);
-        }
+        // Draw lines based on parent-child relationships
+        staticPositions.forEach((sp) => {
+          if (sp.parent_id && idToPosition[sp.parent_id]) {
+            const parentPos = idToPosition[sp.parent_id];
+            p.stroke(150);
+            p.line(parentPos.x, parentPos.y, sp.pos.x, sp.pos.y);
+          }
+        });
 
         // Draw all static positions
         staticPositions.forEach((sp) => {
+          p.push();
           p.fill(sp.color);
+          p.stroke(
+            sp._id === selectedParentId ? 255 : 0,
+            sp._id === selectedParentId ? 255 : 0,
+            0,
+            sp._id === selectedParentId ? 255 : 0
+          ); // Highlight selected parent
+          p.strokeWeight(sp._id === selectedParentId ? 2 : 1);
           p.rectMode(p.CENTER);
-          p.rect(sp.pos.x, sp.pos.y, point.radius * 2, point.radius * 2);
+          p.rect(sp.pos.x, sp.pos.y, 40, 40);
+          p.pop();
+
           p.fill(255);
           p.textAlign(p.CENTER, p.CENTER);
-          // Display type or prompt index above the square
+          // Display objectID and type/prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
-            p.text(sp._id, sp.pos.x, sp.pos.y - point.radius - 20); //display objectID
-            p.text(`${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`, sp.pos.x, sp.pos.y - point.radius - 10);
+            p.text(
+              sp._id,
+              sp.pos.x,
+              sp.pos.y - 30
+            ); /* Display objectID */
+            p.text(
+              `${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`,
+              sp.pos.x,
+              sp.pos.y - 20
+            );
           } else {
-            p.text(sp._id, sp.pos.x, sp.pos.y - point.radius - 20); //display objectID
-            p.text(sp.type === "noise" ? "Noised" : "Denoised", sp.pos.x, sp.pos.y - point.radius - 10);
+            p.text(
+              sp._id,
+              sp.pos.x,
+              sp.pos.y - 30
+            ); /* Display objectID */
+            p.text(
+              sp.type === "noise" ? "Noised" : "Denoised",
+              sp.pos.x,
+              sp.pos.y - 20
+            );
           }
         });
 
         // Draw the moving point when dragging or moving
-        if (isDragging || point.isMoving) {
+        if (isDraggingNew || point.isMoving) {
           p.fill(currentColor);
+          p.stroke(255);
           p.rectMode(p.CENTER);
-          p.rect(point.pos.x, point.pos.y, point.radius * 2, point.radius * 2);
+          p.rect(point.pos.x, point.pos.y, 40, 40);
         }
 
-        // Dragging feedback
-        if (isDragging) {
+        // Dragging feedback for creating new ImageDoc
+        if (isDraggingNew) {
           const mouseWorld = getMouseWorld();
           const dragVector = p5.Vector.sub(mouseWorld, point.pos);
           const dragDistance = dragVector.mag();
@@ -247,15 +284,21 @@ onMounted(() => {
 
           // Draw horizontal reference line
           p.stroke(100, 100, 100);
-          p.line(point.pos.x - dynamicRadius, point.pos.y, point.pos.x + dynamicRadius, point.pos.y);
+          p.line(
+            point.pos.x - dynamicRadius,
+            point.pos.y,
+            point.pos.x + dynamicRadius,
+            point.pos.y
+          );
 
-          // Calculate angle from horizontal --------------------------------------------------------------------------------------------------------------
+          // Calculate angle from horizontal
           let angleRadians = Math.atan2(dragVector.y, dragVector.x);
           let angleDegrees = p.degrees(angleRadians);
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees =
+            Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
@@ -264,11 +307,16 @@ onMounted(() => {
           let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
           // The shooting direction should be opposite to the drag direction
-          let direction = p.createVector(-Math.cos(snappedAngleRadians), -Math.sin(snappedAngleRadians));
+          let direction = p
+            .createVector(
+              -Math.cos(snappedAngleRadians),
+              -Math.sin(snappedAngleRadians)
+            )
+            .mult(dynamicRadius);
 
           // Draw the launch line
           p.stroke(255);
-          let lineEnd = p5.Vector.add(point.pos, direction.mult(dynamicRadius));
+          let lineEnd = p5.Vector.add(point.pos, direction);
           p.line(point.pos.x, point.pos.y, lineEnd.x, lineEnd.y);
 
           p.stroke(0);
@@ -279,10 +327,17 @@ onMounted(() => {
           p.text(point.type, point.pos.x, point.pos.y);
 
           // Draw the angle index
-          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
+          const { promptIndex } = getPromptIndex(
+            point.type,
+            snappedAngleDegrees
+          );
           p.text(promptIndex, lineEnd.x, lineEnd.y);
-          p.textSize(20);
-          p.text("Pick a prompt! The lower the number, \n the more similar to the original prompt.", point.pos.x, point.pos.y - dynamicRadius - 30);
+          p.textSize(14);
+          p.text(
+            "Pick a prompt! The lower the number, \n the more similar to the original prompt.",
+            point.pos.x,
+            point.pos.y - dynamicRadius - 30
+          );
         }
 
         p.pop();
@@ -298,13 +353,21 @@ onMounted(() => {
             point.pos = point.finalPos.copy();
             point.isMoving = false;
             // Add to static positions
-            staticPositions.push({
+            const newImageDoc = {
               pos: point.pos.copy(),
               color: currentColor,
               type: point.type,
               step: point.step,
               promptIndex: point.promptIndex,
-            });
+              _id: generateUniqueId(),
+              parent_id: selectedParentId ?? undefined, // Set the parent ID
+            };
+            staticPositions.push(newImageDoc);
+            console.log(`ImageDoc added: ${newImageDoc._id}`);
+
+            // Automatically select the new ImageDoc as the parent
+            selectedParentId = newImageDoc._id;
+            console.log(`New parent selected: ${selectedParentId}`);
           } else {
             moveVector.setMag(speed);
             point.pos.add(moveVector);
@@ -312,9 +375,34 @@ onMounted(() => {
         }
       };
 
+      // Generate a unique ID (simple implementation)
+      function generateUniqueId() {
+        return Math.random().toString(36).substr(2, 9);
+      }
+
       // Mouse interaction functions
       p.mousePressed = (event: MouseEvent) => {
         if (mouseInCanvas()) {
+          // Check if clicking on the selected parent box to shoot
+          const selectedParent = staticPositions.find(
+            (sp) => sp._id === selectedParentId
+          );
+          if (selectedParent) {
+            const parentScreenPos = screenPos(selectedParent.pos);
+            const distance = p.dist(
+              p.mouseX,
+              p.mouseY,
+              parentScreenPos.x,
+              parentScreenPos.y
+            );
+            if (distance < 20 * scaleFactor) {
+              // Start shooting
+              isDraggingNew = true;
+              point.pos = selectedParent.pos.copy();
+              console.log(`Started shooting from parent ID: ${selectedParentId}`);
+            }
+          }
+
           if (p.keyIsDown(p.SHIFT)) {
             // Start panning
             isPanning = true;
@@ -322,17 +410,7 @@ onMounted(() => {
             panStartY = p.mouseY;
             panStartTranslateX = translateX;
             panStartTranslateY = translateY;
-          } else {
-            // Start dragging
-            if (!point.isMoving) {
-              const mouseWorld = getMouseWorld();
-              const lastPos = staticPositions[staticPositions.length - 1].pos;
-              const d = p.dist(mouseWorld.x, mouseWorld.y, lastPos.x, lastPos.y);
-              if (d < point.radius) {
-                isDragging = true;
-                point.pos = lastPos.copy();
-              }
-            }
+            console.log("Started panning");
           }
         }
       };
@@ -351,7 +429,8 @@ onMounted(() => {
           event.preventDefault();
         }
 
-        if (isDragging) {
+        // Dragging to create new ImageDoc
+        if (isDraggingNew) {
           const mouseWorld = getMouseWorld();
           const dragVector = p5.Vector.sub(mouseWorld, point.pos);
 
@@ -362,10 +441,12 @@ onMounted(() => {
               initialDragDirection = "right";
               currentColor = p.color(255, 0, 0); // Red for noise
               point.type = "noise";
-            } else if (dragVector.x < 0) {
+              console.log("Shooting type set to 'noise'");
+            } else if (dragVector.x < -20) {
               initialDragDirection = "left";
               currentColor = p.color(0, 0, 255); // Blue for denoise
               point.type = "denoise";
+              console.log("Shooting type set to 'denoise'");
             }
           }
         }
@@ -374,8 +455,12 @@ onMounted(() => {
       p.mouseReleased = async () => {
         if (isPanning) {
           isPanning = false;
-        } else if (isDragging) {
-          isDragging = false;
+          console.log("Stopped panning");
+        }
+
+        // Finish dragging to create new ImageDoc
+        if (isDraggingNew) {
+          isDraggingNew = false;
 
           // Use the locked initial drag direction to finalize the type
           const type = initialDragDirection === "right" ? "noise" : "denoise";
@@ -393,13 +478,12 @@ onMounted(() => {
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees =
+            Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
           if (snappedAngleDegrees < 0) snappedAngleDegrees += 360;
-
-          // let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
           let finalPromptIndex = 0;
 
@@ -414,33 +498,76 @@ onMounted(() => {
           let step = dragVector.mag();
 
           // Calculate movement direction (opposite to drag direction)
-          let movementDirection = p.createVector(-Math.cos(p.radians(snappedAngleDegrees)), -Math.sin(p.radians(snappedAngleDegrees))).setMag(step);
+          let movementDirection = p
+            .createVector(
+              -Math.cos(p.radians(snappedAngleDegrees)),
+              -Math.sin(p.radians(snappedAngleDegrees))
+            )
+            .setMag(step);
 
           // Calculate final position
           let finalPos = p5.Vector.add(point.pos, movementDirection);
 
           // Assign final position and properties to point
           point.finalPos = finalPos.copy();
-          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
+          const { promptIndex } = getPromptIndex(
+            point.type,
+            snappedAngleDegrees
+          );
           finalPromptIndex = promptIndex;
           point.promptIndex = finalPromptIndex;
           point.step = step;
           point.isMoving = true;
 
           // Create ImageDoc in the backend
-          const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
+          const coordinate = `${Math.round(finalPos.x)},${Math.round(
+            finalPos.y
+          )}`;
           const stepString = step.toString();
 
-          const lastPos = staticPositions[staticPositions.length - 1];
-          if (!lastPos._id) {
-            console.error("Parent ID is undefined. Skipping ImageDoc creation.");
+          const parentId = selectedParentId;
+
+          if (!parentId) {
+            console.error(
+              "Parent ID is undefined. Skipping ImageDoc creation."
+            );
             return;
           }
-          const parentId = lastPos._id;
 
           console.log(`Parent ID is: ${parentId}`);
 
-          await createImageDoc(parentId, coordinate, point.type, stepString, point.promptIndex);
+          await createImageDoc(
+            parentId,
+            coordinate,
+            point.type,
+            stepString,
+            point.promptIndex
+          );
+        }
+      };
+
+      p.doubleClicked = () => {
+        if (mouseInCanvas()) {
+          let clickedBox = null;
+          for (let i = staticPositions.length - 1; i >= 0; i--) {
+            const sp = staticPositions[i];
+            if (
+              p.dist(
+                p.mouseX,
+                p.mouseY,
+                sp.pos.x * scaleFactor + translateX + p.width / 2,
+                sp.pos.y * scaleFactor + translateY + p.height / 2
+              ) < 20 * scaleFactor
+            ) {
+              clickedBox = sp;
+              break;
+            }
+          }
+
+          if (clickedBox) {
+            selectedParentId = clickedBox._id ?? null;
+            console.log(`Selected parent ID: ${selectedParentId}`);
+          }
         }
       };
 
@@ -454,8 +581,10 @@ onMounted(() => {
             scaleFactor = p.constrain(scaleFactor, minScale, maxScale);
 
             // Adjust translateX and translateY to keep the focus on the mouse position
-            let mouseXWorld = (p.mouseX - translateX - p.width / 2) / scaleFactor;
-            let mouseYWorld = (p.mouseY - translateY - p.height / 2) / scaleFactor;
+            let mouseXWorld =
+              (p.mouseX - translateX - p.width / 2) / scaleFactor;
+            let mouseYWorld =
+              (p.mouseY - translateY - p.height / 2) / scaleFactor;
             translateX -= mouseXWorld * zoomAmount;
             translateY -= mouseYWorld * zoomAmount;
 
@@ -472,7 +601,31 @@ onMounted(() => {
       };
 
       function mouseInCanvas() {
-        return p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
+        return (
+          p.mouseX >= 0 &&
+          p.mouseX <= p.width &&
+          p.mouseY >= 0 &&
+          p.mouseY <= p.height
+        );
+      }
+
+      /**
+       * Get the screen position of a world coordinate
+       */
+      function screenPos(worldPos: p5.Vector) {
+        let x = (worldPos.x + translateX) * scaleFactor + p.width / 2;
+        let y = (worldPos.y + translateY) * scaleFactor + p.height / 2;
+        return { x, y };
+      }
+
+      /**
+       * Get the position of the currently selected parent.
+       */
+      function getSelectedParentPosition(): p5.Vector {
+        const parent = staticPositions.find(
+          (sp) => sp._id === selectedParentId
+        );
+        return parent ? parent.pos.copy() : initialPosition.copy();
       }
     });
 
@@ -483,10 +636,6 @@ onMounted(() => {
   }
 });
 </script>
-
-<template>
-  <div ref="canvasContainer" class="canvas-container"></div>
-</template>
 
 <style scoped>
 .canvas-container {
