@@ -84,7 +84,7 @@ button {
   border: none;
   border-radius: 4px;
   font-size: 1rem;
-  font-weight: bold;
+  /* font-weight: bold; */
   cursor: pointer;
   transition: background 0.3s ease;
 }
