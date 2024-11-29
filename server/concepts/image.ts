@@ -31,9 +31,10 @@ export default class ImageConcept {
   /**
    * Create a new ImageDoc.
    */
-  async create(author: ObjectId, coordinate: string, type: string, step: string, prompt?: string, originalImage?: string, steppedImage?: string, promptedImage?: string) {
+  async create(author: ObjectId, parent: ObjectId, coordinate: string, type: string, step: string, prompt?: string, originalImage?: string, steppedImage?: string, promptedImage?: string) {
     const _id = await this.images.createOne({
       author,
+      parent,
       coordinate,
       type,
       step,

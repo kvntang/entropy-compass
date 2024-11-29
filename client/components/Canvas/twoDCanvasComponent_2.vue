@@ -20,11 +20,14 @@ interface ImageDoc {
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
+  _id: string;
 }
 
 const props = defineProps<{
   images: ImageDoc[];
 }>();
+
+const emit = defineEmits(["refreshImages"]);
 
 console.log("Received images in child:", props.images);
 
@@ -38,12 +41,13 @@ const canvasContainer = ref(null);
  * @param step - The step of the image in the prompt.
  * @param promptIndex - The prompt index calculated from angle deviation.
  */
-const createImageDoc = async (coordinate: string, type: string, step: string, promptIndex: number) => {
+const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number) => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
     await fetchy("/api/images", "POST", {
       body: {
         author: authorId,
+        parent: parentId,
         coordinate,
         type,
         step,
@@ -54,6 +58,7 @@ const createImageDoc = async (coordinate: string, type: string, step: string, pr
       },
     });
     console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
+    emit("refreshImages"); //let the parent know, so canvas knows about the newly added ImageDoc
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
@@ -107,6 +112,7 @@ onMounted(() => {
         type: string;
         step: number;
         promptIndex?: number;
+        _id?: string;
       }[] = [];
       let currentColor: p5.Color;
       let initialPosition: p5.Vector;
@@ -139,6 +145,7 @@ onMounted(() => {
           color: p.color(0, 0, 255), // Blue color for "denoise"
           type: "denoise",
           step: 0,
+          _id: "0000000", //in the final, the initial would need a real _id as well
         });
 
         // Add any existing positions from props
@@ -158,6 +165,7 @@ onMounted(() => {
             type: image.type,
             step: Number(image.step),
             promptIndex: Number(image.prompt),
+            _id: image._id,
           });
         });
 
@@ -210,8 +218,10 @@ onMounted(() => {
           p.textAlign(p.CENTER, p.CENTER);
           // Display type or prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
+            p.text(sp._id, sp.pos.x, sp.pos.y - point.radius - 20); //display objectID
             p.text(`${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`, sp.pos.x, sp.pos.y - point.radius - 10);
           } else {
+            p.text(sp._id, sp.pos.x, sp.pos.y - point.radius - 20); //display objectID
             p.text(sp.type === "noise" ? "Noised" : "Denoised", sp.pos.x, sp.pos.y - point.radius - 10);
           }
         });
@@ -420,7 +430,13 @@ onMounted(() => {
           // Create ImageDoc in the backend
           const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
           const stepString = step.toString();
-          await createImageDoc(coordinate, point.type, stepString, point.promptIndex);
+
+          const lastPos = staticPositions[staticPositions.length - 1];
+          const parentId = lastPos._id;
+
+          console.log(`Parent ID is: ${parentId}`);
+
+          await createImageDoc(parentId, coordinate, point.type, stepString, point.promptIndex);
         }
       };
 

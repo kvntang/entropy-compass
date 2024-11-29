@@ -51,7 +51,6 @@ function refreshImages() {
 const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canvas"));
 </script>
 
-
 <template>
   <main>
     <h1>Welcome to Home Page</h1>
@@ -73,7 +72,6 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
     </section>
   </main>
 </template>
-
 
 <style scoped>
 /* change global font */
@@ -113,5 +111,4 @@ section {
 h2 {
   text-align: center;
 }
-
 </style>
