@@ -65,9 +65,17 @@ function toggleCanvas() {
 <style scoped>
 @import "./assets/toast.css";
 
+body {
+  font-family: "Arial", sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #1a1a1a;
+  color: white;
+}
+
 nav {
   padding: 1em 2em;
-  background-color: lightgray;
+  background-color: #2b2b2b;
   display: flex;
   align-items: center;
 }
@@ -89,7 +97,7 @@ img {
 
 a {
   font-size: large;
-  color: black;
+  color: white;
   text-decoration: none;
 }
 
