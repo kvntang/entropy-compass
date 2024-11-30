@@ -348,11 +348,11 @@ onMounted(() => {
               parent_id: selectedParentId ?? undefined, // Set the parent ID
             };
             staticPositions.push(newImageDoc);
-            console.log(`ImageDoc added: ${newImageDoc._id}`);
+            // console.log(`ImageDoc added: ${newImageDoc._id}`);
 
-            // Automatically select the new ImageDoc as the parent
-            selectedParentId = newImageDoc._id;
-            console.log(`New parent selected: ${selectedParentId}`);
+            // // Automatically select the new ImageDoc as the parent
+            // selectedParentId = newImageDoc._id;
+            // console.log(`New parent selected: ${selectedParentId}`);
           } else {
             moveVector.setMag(speed);
             point.pos.add(moveVector);
