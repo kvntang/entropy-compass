@@ -13,36 +13,52 @@ import p5 from "p5";
 import { onMounted, onUnmounted, ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
+interface ImageDoc {
+  author: string;
+  parent: string; // Parent ImageDoc ID
+  coordinate: string; // stored as x, y
+  prompt: string;
+  type: string;
+  step: string;
+  originalImage: string;
+  steppedImage: string;
+  promptedImage: string;
+  _id: string;
+}
+
+const props = defineProps<{
+  images: ImageDoc[];
+}>();
+
+const emit = defineEmits(["refreshImages"]);
+
 const canvasContainer = ref(null);
 
 // Function to create ImageDoc in the backend
-const createImageDoc = async (
-  coordinate: string,
-  type: string,
-  step: string,
-  promptIndex: number,
-  refactoredstep: string, // New parameter
-) => {
+const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number) => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
-    await fetchy("/api/images", "POST", {
+    const response = await fetchy("/api/images", "POST", {
       body: {
         author: authorId,
+        parent: parentId,
         coordinate,
         type,
         step,
-        prompt: promptIndex.toString(), // Store promptIndex
-        refactoredstep, // Include refactoredstep
+        prompt: promptIndex.toString(),
         originalImage: "",
         steppedImage: "",
         promptedImage: "",
       },
     });
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, PromptIndex: ${promptIndex}, RefactoredStep: ${refactoredstep}`);
+    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
+    emit("refreshImages"); // Let the parent know to refresh the images
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
 };
+
+//--------------------------------------------------------------------------------------------------------------
 
 onMounted(() => {
   if (canvasContainer.value) {
@@ -110,23 +126,29 @@ onMounted(() => {
         const { initialX, initialY } = calculateInitialPosition(canvasWidth, canvasHeight);
 
         // Add initial image
-        const initialStep = 0; // Set to 0 since no step has been taken
-        const initialRefactoredStep = initialStep * 80; // 0 * 80 = 0 -----------------------------------------------------
-        const initialImage: Image = {
-          x: initialX,
-          y: initialY,
-          alpha: 255,
-          isNoisy: false,
-          promptIndex: 0,
-          isAnimating: false,
-          currentY: initialY,
-          step: initialStep,
-          refactoredstep: initialRefactoredStep, // Set refactoredstep to 0
-        };
-        images.push(initialImage);
+        if (props.images.length === 0) {
+          try {
+            const initialStep = 0; // Set to 0 since no step has been taken
+            const initialRefactoredStep = initialStep * 80; // 0 * 80 = 0 -----------------------------------------------------
+            const initialImage: Image = {
+              x: initialX,
+              y: initialY,
+              alpha: 255,
+              isNoisy: false,
+              promptIndex: 0,
+              isAnimating: false,
+              currentY: initialY,
+              step: initialStep,
+              refactoredstep: initialRefactoredStep, // Set refactoredstep to 0
+            };
+            images.push(initialImage);
 
-        // **Log the initial image's information**
-        console.log("Initial Image Created:", initialImage);
+            // **Log the initial image's information**
+            console.log("Initial Image Created:", initialImage);
+          } catch (error) {
+            console.error("Error creating initial ImageDoc:", error);
+          }
+        }
 
         // **Do NOT create ImageDoc for the initial image**
         // Removed the following lines:

@@ -10,7 +10,7 @@ import { fetchy } from "../utils/fetchy.js";
 // Define props
 const props = defineProps(["is1DCanvas"]);
 
-const images = ref([]); // Store the images fetched from the backend
+const images = ref([]);
 const loading = ref(false); // Loading state
 const error = ref<string | null>(null); // Explicitly define the type as string or null
 
@@ -40,7 +40,6 @@ onMounted(() => {
   });
 });
 
-// Handle refreshImages emit from the child component
 function refreshImages() {
   fetchImages().catch((err) => {
     console.error("Error during refreshImages:", err);
