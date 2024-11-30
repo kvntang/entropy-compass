@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import p5 from "p5";
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
 interface ImageDoc {
@@ -94,29 +94,6 @@ function getPromptIndex(type: string, snappedAngleDegrees: number) {
 }
 
 //--------------------------------------------------------------------------------------------------------------
-watch(
-  () => props.images,
-  (newImages) => {
-    // Update the canvas based on new images
-    staticPositions = newImages.map((image) => {
-      const [x, y] = image.coordinate.split(",").map(Number);
-      const color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255);
-      return {
-        pos: p.createVector(x, y),
-        color,
-        type: image.type,
-        step: Number(image.step),
-        promptIndex: Number(image.prompt),
-        _id: image._id,
-        parent_id: image.parent,
-      };
-    });
-
-    console.log("Canvas updated with new images.");
-    p.redraw();
-  },
-  { deep: true }, // Watch deeply for changes in the array
-);
 
 onMounted(() => {
   if (canvasContainer.value) {
