@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import p5 from "p5";
-import { onMounted, onUnmounted, ref } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
 interface ImageDoc {
@@ -25,9 +25,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(["refreshImages"]);
-
-// Note: We are removing the addition of props.images to staticPositions
-// to prevent conflicts and resetting of state.
 
 const canvasContainer = ref(null);
 
@@ -57,8 +54,7 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
       },
     });
     console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
-    // Removed emit("refreshImages") to prevent potential state resets.
-    // emit("refreshImages"); // Let the parent know to refresh the images
+    emit("refreshImages"); // Let the parent know to refresh the images
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
   }
@@ -98,6 +94,29 @@ function getPromptIndex(type: string, snappedAngleDegrees: number) {
 }
 
 //--------------------------------------------------------------------------------------------------------------
+watch(
+  () => props.images,
+  (newImages) => {
+    // Update the canvas based on new images
+    staticPositions = newImages.map((image) => {
+      const [x, y] = image.coordinate.split(",").map(Number);
+      const color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+      return {
+        pos: p.createVector(x, y),
+        color,
+        type: image.type,
+        step: Number(image.step),
+        promptIndex: Number(image.prompt),
+        _id: image._id,
+        parent_id: image.parent,
+      };
+    });
+
+    console.log("Canvas updated with new images.");
+    p.redraw();
+  },
+  { deep: true }, // Watch deeply for changes in the array
+);
 
 onMounted(() => {
   if (canvasContainer.value) {
@@ -136,7 +155,7 @@ onMounted(() => {
       // Selected parent ID for creating new ImageDocs
       let selectedParentId: string | null = null;
 
-      p.setup = () => {
+      p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
@@ -145,21 +164,52 @@ onMounted(() => {
         initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
         camPos = initialPosition.copy(); // Center camera on initial position
 
-        // Add initial position to staticPositions with blue color (denoise)
-        staticPositions.push({
-          pos: initialPosition.copy(),
-          color: p.color(0, 0, 255), // Blue color for "denoise"
-          type: "denoise",
-          step: 0,
-          _id: "0000000", // In the final, the initial would need a real _id as well
-          parent_id: undefined, // No parent for the initial node
-        });
-
         // Set the initial parent to the first node
         selectedParentId = "0000000";
 
-        // Note: Removed adding props.images to staticPositions
-        // to prevent resetting or duplication.
+        // 1. Initialize a starting point if database is empty
+        if (props.images.length === 0) {
+          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
+          try {
+            // Create the initial ImageDoc
+            const response = await createImageDoc(
+              selectedParentId, // Parent ID is null for the root node
+              coordinate,
+              "denoise", // Initial type is "denoise"
+              "0", // Step is 0 for the root node
+              0, // Prompt index is 0 for the root node
+            );
+
+            // Push it to staticPositions with blue color (denoise)
+            staticPositions.push({
+              pos: initialPosition.copy(),
+              color: p.color(0, 0, 255), // Blue color for "denoise"
+              type: "denoise",
+              step: 0,
+              _id: "0000000", // Use the response ID from the API for the real scenario
+              parent_id: undefined, // No parent for the initial node
+            });
+
+            console.log("Initial ImageDoc created and added to static positions.");
+          } catch (error) {
+            console.error("Error creating initial ImageDoc:", error);
+          }
+        }
+
+        // 2. Load database initial static positions from props
+        props.images.forEach((image) => {
+          const [x, y] = image.coordinate.split(",").map(Number);
+          let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+          staticPositions.push({
+            pos: p.createVector(x, y),
+            color,
+            type: image.type,
+            step: Number(image.step),
+            promptIndex: Number(image.prompt),
+            _id: image._id,
+            parent_id: image.parent,
+          });
+        });
 
         // Initialize point at the selected parent's position
         const parentPos = getSelectedParentPosition();
@@ -191,20 +241,29 @@ onMounted(() => {
         p.scale(scaleFactor);
         p.translate(translateX, translateY);
 
-        // Create a map for quick parent lookup
+        // Draw lines based on parent-child relationships
         const idToPosition: { [key: string]: p5.Vector } = {};
         staticPositions.forEach((sp) => {
-          if (sp._id) {
-            idToPosition[sp._id] = sp.pos;
-          }
+          if (sp._id) idToPosition[sp._id] = sp.pos;
         });
 
-        // Draw lines based on parent-child relationships
         staticPositions.forEach((sp) => {
           if (sp.parent_id && idToPosition[sp.parent_id]) {
             const parentPos = idToPosition[sp.parent_id];
+
+            // Draw the connecting line
             p.stroke(150);
             p.line(parentPos.x, parentPos.y, sp.pos.x, sp.pos.y);
+
+            // Calculate the midpoint
+            const midX = (parentPos.x + sp.pos.x) / 2;
+            const midY = (parentPos.y + sp.pos.y) / 2;
+
+            // Render the promptIndex at the midpoint
+            p.noStroke();
+            p.fill(255); // Text color
+            p.textAlign(p.CENTER, p.CENTER);
+            p.text(sp.promptIndex, midX, midY);
           }
         });
 
@@ -213,7 +272,7 @@ onMounted(() => {
           p.push();
           p.fill(sp.color);
           p.stroke(sp._id === selectedParentId ? 255 : 0, sp._id === selectedParentId ? 255 : 0, 0, sp._id === selectedParentId ? 255 : 0); // Highlight selected parent
-          p.strokeWeight(sp._id === selectedParentId ? 2 : 1);
+          p.strokeWeight(sp._id === selectedParentId ? 4 : 1);
           p.rectMode(p.CENTER);
           p.rect(sp.pos.x, sp.pos.y, 40, 40);
           p.pop();
@@ -309,7 +368,6 @@ onMounted(() => {
               type: point.type,
               step: point.step,
               promptIndex: point.promptIndex,
-              _id: generateUniqueId(),
               parent_id: selectedParentId ?? undefined, // Set the parent ID
             };
             staticPositions.push(newImageDoc);
@@ -324,11 +382,6 @@ onMounted(() => {
           }
         }
       };
-
-      // Generate a unique ID (simple implementation)
-      function generateUniqueId() {
-        return Math.random().toString(36).substr(2, 9);
-      }
 
       // Mouse interaction functions
       p.mousePressed = (event: MouseEvent) => {
