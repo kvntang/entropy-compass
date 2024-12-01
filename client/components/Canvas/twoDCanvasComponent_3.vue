@@ -36,8 +36,15 @@ const canvasContainer = ref(null);
  * @param type - The type of the image ("noise" or "denoise").
  * @param step - The step of the image in the prompt.
  * @param promptIndex - The prompt index calculated from angle deviation.
+ * @returns The created ImageDoc's data.
  */
-const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number) => {
+const createImageDoc = async (
+  parentId: string,
+  coordinate: string,
+  type: string,
+  step: string,
+  promptIndex: number
+): Promise<ImageDoc | null> => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
     const response = await fetchy("/api/images", "POST", {
@@ -53,10 +60,14 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
         promptedImage: "",
       },
     });
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
+    console.log(
+      `ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`
+    );
     emit("refreshImages"); // Let the parent know to refresh the images
+    return response as ImageDoc; // Return the created ImageDoc
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
+    return null;
   }
 };
 
@@ -141,52 +152,66 @@ onMounted(() => {
         initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
         camPos = initialPosition.copy(); // Center camera on initial position
 
-        // Set the initial parent to the first node
-        selectedParentId = "0000000";
-
         // 1. Initialize a starting point if database is empty
         if (props.images.length === 0) {
-          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
+          const coordinate = `${Math.round(initialPosition.x)},${Math.round(
+            initialPosition.y
+          )}`;
           try {
             // Create the initial ImageDoc
-            const response = await createImageDoc(
-              selectedParentId, // Parent ID is null for the root node
+            const createdImageDoc = await createImageDoc(
+              "", // Parent ID is empty for the root node
               coordinate,
               "denoise", // Initial type is "denoise"
               "0", // Step is 0 for the root node
-              0, // Prompt index is 0 for the root node
+              0 // Prompt index is 0 for the root node
             );
 
-            // Push it to staticPositions with blue color (denoise)
-            staticPositions.push({
-              pos: initialPosition.copy(),
-              color: p.color(0, 0, 255), // Blue color for "denoise"
-              type: "denoise",
-              step: 0,
-              _id: "0000000", // Use the response ID from the API for the real scenario
-              parent_id: undefined, // No parent for the initial node
-            });
+            if (createdImageDoc) {
+              // Push it to staticPositions with blue color (denoise)
+              staticPositions.push({
+                pos: initialPosition.copy(),
+                color: p.color(0, 0, 255), // Blue color for "denoise"
+                type: "denoise",
+                step: 0,
+                promptIndex: 0,
+                _id: createdImageDoc._id, // Use the response ID from the API
+                parent_id: undefined, // No parent for the initial node
+              });
 
-            console.log("Initial ImageDoc created and added to static positions.");
+              // Set the initial parent to the created ImageDoc
+              selectedParentId = createdImageDoc._id;
+              console.log(
+                "Initial ImageDoc created and added to static positions.",
+                `Parent ID set to: ${selectedParentId}`
+              );
+            }
           } catch (error) {
             console.error("Error creating initial ImageDoc:", error);
           }
-        }
-
-        // 2. Load database initial static positions from props
-        props.images.forEach((image) => {
-          const [x, y] = image.coordinate.split(",").map(Number);
-          let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
-          staticPositions.push({
-            pos: p.createVector(x, y),
-            color,
-            type: image.type,
-            step: Number(image.step),
-            promptIndex: Number(image.prompt),
-            _id: image._id,
-            parent_id: image.parent,
+        } else {
+          // 2. Load database initial static positions from props
+          props.images.forEach((image) => {
+            const [x, y] = image.coordinate.split(",").map(Number);
+            let color: p5.Color =
+              image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+            staticPositions.push({
+              pos: p.createVector(x, y),
+              color,
+              type: image.type,
+              step: Number(image.step),
+              promptIndex: Number(image.prompt),
+              _id: image._id,
+              parent_id: image.parent,
+            });
           });
-        });
+
+          // Automatically select the last image as the parent
+          if (props.images.length > 0) {
+            selectedParentId = props.images[props.images.length - 1]._id;
+            console.log(`Selected parent ID set to: ${selectedParentId}`);
+          }
+        }
 
         // Initialize point at the selected parent's position
         const parentPos = getSelectedParentPosition();
@@ -206,7 +231,10 @@ onMounted(() => {
        * Convert mouse coordinates to world coordinates considering camera transformations.
        */
       function getMouseWorld() {
-        return p.createVector((p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x, (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y);
+        return p.createVector(
+          (p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x,
+          (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y
+        );
       }
 
       p.draw = () => {
@@ -248,8 +276,13 @@ onMounted(() => {
         staticPositions.forEach((sp) => {
           p.push();
           p.fill(sp.color);
-          p.stroke(sp._id === selectedParentId ? 255 : 0, sp._id === selectedParentId ? 255 : 0, 0, sp._id === selectedParentId ? 255 : 0); // Highlight selected parent
-          p.strokeWeight(sp._id === selectedParentId ? 4 : 1);
+          p.stroke(
+            sp._id === selectedParentId ? 255 : 0,
+            sp._id === selectedParentId ? 255 : 0,
+            0,
+            sp._id === selectedParentId ? 255 : 0
+          ); // Highlight selected parent
+          p.strokeWeight(sp._id === selectedParentId ? 2 : 1);
           p.rectMode(p.CENTER);
           p.rect(sp.pos.x, sp.pos.y, 40, 40);
           p.pop();
@@ -259,10 +292,18 @@ onMounted(() => {
           // Display objectID and type/prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
-            p.text(`${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`, sp.pos.x, sp.pos.y - 20);
+            p.text(
+              `${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`,
+              sp.pos.x,
+              sp.pos.y - 20
+            );
           } else {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
-            p.text(sp.type === "noise" ? "Noised" : "Denoised", sp.pos.x, sp.pos.y - 20);
+            p.text(
+              sp.type === "noise" ? "Noised" : "Denoised",
+              sp.pos.x,
+              sp.pos.y - 20
+            );
           }
         });
 
@@ -288,7 +329,12 @@ onMounted(() => {
 
           // Draw horizontal reference line
           p.stroke(100, 100, 100);
-          p.line(point.pos.x - dynamicRadius, point.pos.y, point.pos.x + dynamicRadius, point.pos.y);
+          p.line(
+            point.pos.x - dynamicRadius,
+            point.pos.y,
+            point.pos.x + dynamicRadius,
+            point.pos.y
+          );
 
           // Calculate angle from horizontal
           let angleRadians = Math.atan2(dragVector.y, dragVector.x);
@@ -296,7 +342,8 @@ onMounted(() => {
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees =
+            Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
@@ -305,7 +352,12 @@ onMounted(() => {
           let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
           // The shooting direction should be opposite to the drag direction
-          let direction = p.createVector(-Math.cos(snappedAngleRadians), -Math.sin(snappedAngleRadians)).mult(dynamicRadius);
+          let direction = p
+            .createVector(
+              -Math.cos(snappedAngleRadians),
+              -Math.sin(snappedAngleRadians)
+            )
+            .mult(dynamicRadius);
 
           // Draw the launch line
           p.stroke(255);
@@ -323,7 +375,11 @@ onMounted(() => {
           const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
           p.text(promptIndex, lineEnd.x, lineEnd.y);
           p.textSize(14);
-          p.text("Pick a prompt! The lower the number, \n the more similar to the original prompt.", point.pos.x, point.pos.y - dynamicRadius - 30);
+          p.text(
+            "Pick a prompt! The lower the number, \n the more similar to the original prompt.",
+            point.pos.x,
+            point.pos.y - dynamicRadius - 30
+          );
         }
 
         p.pop();
@@ -338,21 +394,38 @@ onMounted(() => {
             // Close enough to final position
             point.pos = point.finalPos.copy();
             point.isMoving = false;
-            // Add to static positions
-            const newImageDoc = {
-              pos: point.pos.copy(),
-              color: currentColor,
-              type: point.type,
-              step: point.step,
-              promptIndex: point.promptIndex,
-              parent_id: selectedParentId ?? undefined, // Set the parent ID
-            };
-            staticPositions.push(newImageDoc);
-            // console.log(`ImageDoc added: ${newImageDoc._id}`);
 
-            // // Automatically select the new ImageDoc as the parent
-            // selectedParentId = newImageDoc._id;
-            // console.log(`New parent selected: ${selectedParentId}`);
+            // Add to static positions with the actual _id from the created ImageDoc
+            // Assuming that the ImageDoc has been created and props.images have been refreshed
+            // Find the newly created ImageDoc based on coordinates
+            const newImage = props.images.find(
+              (img) =>
+                img.coordinate ===
+                `${Math.round(point.pos.x)},${Math.round(point.pos.y)}`
+            );
+
+            if (newImage) {
+              staticPositions.push({
+                pos: p.createVector(point.pos.x, point.pos.y),
+                color:
+                  newImage.type === "noise"
+                    ? p.color(255, 0, 0)
+                    : p.color(0, 0, 255),
+                type: newImage.type,
+                step: Number(newImage.step),
+                promptIndex: Number(newImage.prompt),
+                _id: newImage._id,
+                parent_id: newImage.parent,
+              });
+
+              // Automatically select the new ImageDoc as the parent
+              selectedParentId = newImage._id;
+              console.log(`New parent selected: ${selectedParentId}`);
+            } else {
+              console.error(
+                "New ImageDoc not found in props.images. Ensure that 'refreshImages' emits correctly."
+              );
+            }
           } else {
             moveVector.setMag(speed);
             point.pos.add(moveVector);
@@ -364,10 +437,17 @@ onMounted(() => {
       p.mousePressed = (event: MouseEvent) => {
         if (mouseInCanvas()) {
           // Check if clicking on the selected parent box to shoot
-          const selectedParent = staticPositions.find((sp) => sp._id === selectedParentId);
+          const selectedParent = staticPositions.find(
+            (sp) => sp._id === selectedParentId
+          );
           if (selectedParent) {
             const parentScreenPos = screenPos(selectedParent.pos);
-            const distance = p.dist(p.mouseX, p.mouseY, parentScreenPos.x, parentScreenPos.y);
+            const distance = p.dist(
+              p.mouseX,
+              p.mouseY,
+              parentScreenPos.x,
+              parentScreenPos.y
+            );
             if (distance < 20 * scaleFactor) {
               // Start shooting
               isDraggingNew = true;
@@ -451,7 +531,8 @@ onMounted(() => {
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees =
+            Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
@@ -470,33 +551,59 @@ onMounted(() => {
           let step = dragVector.mag();
 
           // Calculate movement direction (opposite to drag direction)
-          let movementDirection = p.createVector(-Math.cos(p.radians(snappedAngleDegrees)), -Math.sin(p.radians(snappedAngleDegrees))).setMag(step);
+          let movementDirection = p
+            .createVector(
+              -Math.cos(p.radians(snappedAngleDegrees)),
+              -Math.sin(p.radians(snappedAngleDegrees))
+            )
+            .setMag(step);
 
           // Calculate final position
           let finalPos = p5.Vector.add(point.pos, movementDirection);
 
           // Assign final position and properties to point
           point.finalPos = finalPos.copy();
-          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
+          const { promptIndex } = getPromptIndex(
+            point.type,
+            snappedAngleDegrees
+          );
           finalPromptIndex = promptIndex;
           point.promptIndex = finalPromptIndex;
           point.step = step;
           point.isMoving = true;
 
           // Create ImageDoc in the backend
-          const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
+          const coordinate = `${Math.round(finalPos.x)},${Math.round(
+            finalPos.y
+          )}`;
           const stepString = step.toString();
 
           const parentId = selectedParentId;
 
           if (!parentId) {
-            console.error("Parent ID is undefined. Skipping ImageDoc creation.");
+            console.error(
+              "Parent ID is undefined. Skipping ImageDoc creation."
+            );
             return;
           }
 
           console.log(`Parent ID is: ${parentId}`);
 
-          await createImageDoc(parentId, coordinate, point.type, stepString, point.promptIndex);
+          const createdImageDoc = await createImageDoc(
+            parentId,
+            coordinate,
+            point.type,
+            stepString,
+            point.promptIndex
+          );
+
+          if (!createdImageDoc) {
+            console.error("Failed to create new ImageDoc.");
+            return;
+          }
+
+          // The new ImageDoc will be added to staticPositions in the draw loop
+          // and the parent will be updated automatically
         }
       };
 
@@ -505,7 +612,11 @@ onMounted(() => {
           let clickedBox = null;
           for (let i = staticPositions.length - 1; i >= 0; i--) {
             const sp = staticPositions[i];
-            if (p.dist(p.mouseX, p.mouseY, sp.pos.x * scaleFactor + translateX + p.width / 2, sp.pos.y * scaleFactor + translateY + p.height / 2) < 20 * scaleFactor) {
+            const screenPosition = screenPos(sp.pos);
+            if (
+              p.dist(p.mouseX, p.mouseY, screenPosition.x, screenPosition.y) <
+              20 * scaleFactor
+            ) {
               clickedBox = sp;
               break;
             }
@@ -528,8 +639,10 @@ onMounted(() => {
             scaleFactor = p.constrain(scaleFactor, minScale, maxScale);
 
             // Adjust translateX and translateY to keep the focus on the mouse position
-            let mouseXWorld = (p.mouseX - translateX - p.width / 2) / scaleFactor;
-            let mouseYWorld = (p.mouseY - translateY - p.height / 2) / scaleFactor;
+            let mouseXWorld =
+              (p.mouseX - translateX - p.width / 2) / scaleFactor;
+            let mouseYWorld =
+              (p.mouseY - translateY - p.height / 2) / scaleFactor;
             translateX -= mouseXWorld * zoomAmount;
             translateY -= mouseYWorld * zoomAmount;
 
@@ -546,7 +659,12 @@ onMounted(() => {
       };
 
       function mouseInCanvas() {
-        return p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
+        return (
+          p.mouseX >= 0 &&
+          p.mouseX <= p.width &&
+          p.mouseY >= 0 &&
+          p.mouseY <= p.height
+        );
       }
 
       /**
