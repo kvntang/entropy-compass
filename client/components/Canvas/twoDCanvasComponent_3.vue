@@ -135,6 +135,9 @@ onMounted(() => {
       // Selected parent ID for creating new ImageDocs
       let selectedParentId: string | null = null;
 
+      //0. Conversion
+      const stepFactor = 30;
+
       //-------------------SETUP----------------------------------------------------------------------------
       p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
@@ -181,28 +184,65 @@ onMounted(() => {
           }
         } else {
           // 2. Load database initial static positions from props
+
           props.images.forEach((image) => {
-            const [x, y] = image.coordinate.split(",").map(Number);
+            // Calculate angle based on promptIndex and type
+            let snappedAngleDegrees = 0;
 
-            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+            if (image.type === "noise") {
+              if (image.prompt === "0") {
+                snappedAngleDegrees = 0;
+              } else if (parseInt(image.prompt) % 2 === 1) {
+                //odd
+                // Upper circle for noise
+                snappedAngleDegrees = ((parseInt(image.prompt) + 1) / 2) * 10;
+              } else {
+                //even
+                // Lower circle for noise
+                snappedAngleDegrees = 360 - (parseInt(image.prompt) / 2) * 10;
+              }
+            } else if (image.type === "denoise") {
+              if (image.prompt === "0") {
+                snappedAngleDegrees = 180;
+              } else if (parseInt(image.prompt) % 2 === 1) {
+                //odd
+                // Upper circle for denoise
+                snappedAngleDegrees = 180 - ((parseInt(image.prompt) + 1) / 2) * 10;
+              } else {
+                //even
+                // Lower circle for denoise
+                snappedAngleDegrees = 180 + (parseInt(image.prompt) / 2) * 10;
+              }
+            }
 
-            // populate list
+            // Offset by 90 degrees to align 9 o'clock with 0 degrees
+            snappedAngleDegrees = (snappedAngleDegrees - 180 + 360) % 360;
+            // Calculate position based on step (distance) and angle
+            const step = parseFloat(image.step) * stepFactor; //step conversion factor
+            const angleRadians = p.radians(snappedAngleDegrees);
+            const x = step * Math.cos(angleRadians);
+            const y = step * Math.sin(angleRadians);
+
+            // Set color based on type
+            let color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+
+            // Push the calculated position into staticPositions
             staticPositions.push({
               pos: p.createVector(x, y),
               color,
               type: image.type,
-              step: Number(image.step),
-              promptIndex: Number(image.prompt),
+              step: step,
+              promptIndex: parseInt(image.prompt),
               _id: image._id,
               parent_id: image.parent,
             });
           });
 
-          // // Automatically select the last image as the parent
-          // if (props.images.length > 0) {
-          //   selectedParentId = props.images[props.images.length - 1]._id;
-          //   console.log(`Selected parent ID set to: ${selectedParentId}`);
-          // }
+          // Automatically select the last image as the parent
+          if (props.images.length > 0) {
+            selectedParentId = props.images[props.images.length - 1]._id;
+            console.log(`Selected parent ID set to: ${selectedParentId}`);
+          }
         }
 
         // Initialize point at the selected parent's position
@@ -276,7 +316,8 @@ onMounted(() => {
           p.textAlign(p.CENTER, p.CENTER);
           // Display objectID and type/prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
-            p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
+            // p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
+            // p.text(`Parent: ${sp.parent_id}`, sp.pos.x, sp.pos.y - 50);
             p.text(`${sp.type === "noise" ? "Noised" : "Denoised"}`, sp.pos.x, sp.pos.y - 20);
             p.text(`${sp.promptIndex}`, sp.pos.x, sp.pos.y);
           } else {
@@ -495,6 +536,7 @@ onMounted(() => {
 
           // Set the step as the magnitude of the drag vector
           let step = dragVector.mag();
+          let convertedStep = Math.round(step / stepFactor);
 
           // Calculate movement direction (opposite to drag direction)
           let movementDirection = p.createVector(-Math.cos(p.radians(snappedAngleDegrees)), -Math.sin(p.radians(snappedAngleDegrees))).setMag(step);
@@ -507,12 +549,12 @@ onMounted(() => {
           const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
           finalPromptIndex = promptIndex;
           point.promptIndex = finalPromptIndex;
-          point.step = step;
+          point.step = convertedStep;
           point.isMoving = true;
 
           // Create ImageDoc in the backend
           const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
-          const stepString = step.toString();
+          const stepString = convertedStep.toString();
 
           const parentId = selectedParentId;
 

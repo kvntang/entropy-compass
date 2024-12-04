@@ -114,8 +114,10 @@ onMounted(() => {
        */
       function calculateInitialPosition(canvasWidth: number) {
         // Position the initial square at the center-top of the canvas, aligned to grid
-        const initialX = Math.round(p.width / 2 / (gridSize + padding)) * (gridSize + padding);
-        const initialY = gridSize; // One gridSize below the top
+        // const initialX = Math.round(p.width / 2 / (gridSize + padding)) * (gridSize + padding);
+        // const initialY = gridSize; // One gridSize below the top
+        const initialX = 0;
+        const initialY = 0;
         return p.createVector(initialX, initialY);
       }
 
@@ -127,6 +129,10 @@ onMounted(() => {
         canvas.parent(canvasContainer.value);
 
         p.rectMode(p.CORNER); // Ensure rectMode is CORNER
+
+        // Initialize camera translation to center at (0, 0)
+        translateX = canvasWidth / 2; // Start at 0 on X-axis
+        translateY = 0; // Start at 0 on Y-axis
 
         //1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
@@ -174,6 +180,8 @@ onMounted(() => {
             let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
 
             // populate list
+            console.log(`y: ${initialPosition.y}`);
+
             staticPositions.push({
               pos: p.createVector(x, y), //not going to use this for 1d rendering
               color,
@@ -209,7 +217,6 @@ onMounted(() => {
         //   p.line(0, y, p.width / scaleFactor, y);
         // }
 
-        // Draw right-angle lines connecting parent and child boxes
         // Draw right-angle lines connecting parent and child boxes
         for (let child of staticPositions) {
           if (child.parent_id) {
