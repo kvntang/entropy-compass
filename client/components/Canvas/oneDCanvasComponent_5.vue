@@ -20,7 +20,6 @@ interface ImageDoc {
   prompt: string;
   type: string;
   step: string;
-  // refactoredstep: string;
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
@@ -79,16 +78,12 @@ onMounted(() => {
         promptIndex?: number;
         _id?: string;
         parent_id?: string;
-        // alpha: number;
-        // isNoisy: boolean;
-        // isVertical: boolean;
         isAnimating: boolean;
         currentY: number;
         startY?: number;
         targetY?: number;
         animationStartTime?: number;
         animationDuration?: number;
-        // refactoredstep: number;
       }[] = [];
 
       let isDragging = false;
@@ -112,6 +107,7 @@ onMounted(() => {
 
       let initialPosition: p5.Vector;
       let selectedParentId: string | null = null; // To track the parent for new ImageDocs
+      let selectedType: string;
 
       /**
        * Calculate the initial position based on canvas width
@@ -124,59 +120,6 @@ onMounted(() => {
       }
 
       //-------------------SETUP----------------------------------------------------------------------------
-      //Backup
-      // p.setup = async () => {
-      //   const canvasWidth = p.windowWidth - 40;
-      //   const canvasHeight = p.windowHeight - 120;
-      //   const canvas = p.createCanvas(canvasWidth, canvasHeight);
-      //   canvas.parent(canvasContainer.value);
-
-      //   p.rectMode(p.CORNER); // Ensure rectMode is CORNER
-
-      //   initialPosition = calculateInitialPosition(canvasWidth);
-
-      //   //1. Initialize the first ImageDoc if staticPositions is empty
-      //   if (staticPositions.length === 0) {
-      //     const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
-      //     const type = "denoise"; // Initial type
-      //     const step = "0"; // Initial step
-      //     const promptIndex = 0; // Initial prompt index
-      //     // const refactoredstep = "0"; // Initial refactored step
-
-      //     const createdImageDoc = await createImageDoc(
-      //       null, // No parent for the initial ImageDoc
-      //       coordinate,
-      //       type,
-      //       step,
-      //       promptIndex,
-      //       // refactoredstep,
-      //     );
-
-      //     if (createdImageDoc) {
-      //       staticPositions.push({
-      //         pos: initialPosition.copy(),
-      //         color: p.color(0, 0, 255), // Blue for denoise
-      //         type: type,
-      //         step: 0,
-      //         promptIndex: promptIndex,
-      //         _id: createdImageDoc._id,
-      //         parent_id: undefined, // No parent
-      //         // alpha: 255,
-      //         // isNoisy: false,
-      //         // isVertical: false,
-      //         isAnimating: false,
-      //         currentY: initialPosition.y,
-      //         // refactoredstep: 0,
-      //       });
-      //       selectedParentId = createdImageDoc._id || null;
-      //       console.log("Initial ImageDoc created and added to staticPositions:", staticPositions[0]);
-      //     }
-      //   }
-
-      //   // **Log the initial image's information**
-      //   console.log("Static Positions:", staticPositions);
-      // };
-
       p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
@@ -213,16 +156,12 @@ onMounted(() => {
                 promptIndex: 0,
                 _id: createdImageDoc._id, //Use the response ID from the API
                 parent_id: undefined, // No parent for the initial node
-                // One D stuff here
-                // alpha: 255,
-                // isNoisy: false,
-                // isVertical: false,
                 isAnimating: false,
                 currentY: initialPosition.y,
               });
-              // Set the initial parent to the created ImageDoc
-              selectedParentId = createdImageDoc._id;
-              console.log("Initial ImageDoc created and added to staticPositions:", staticPositions[0], `Parent ID set to: ${selectedParentId}`);
+              // // Set the initial parent to the created ImageDoc
+              // selectedParentId = createdImageDoc._id;
+              // console.log("Initial ImageDoc created and added to staticPositions:", staticPositions[0], `Parent ID set to: ${selectedParentId}`);
             }
           } catch (error) {
             console.error("Error creating initial ImageDoc:", error);
@@ -243,10 +182,6 @@ onMounted(() => {
               promptIndex: Number(image.prompt),
               _id: image._id,
               parent_id: image.parent,
-              // One D stuff here, not sure what they need to be yet
-              // alpha: 255,
-              // isNoisy: false,
-              // isVertical: false,
               isAnimating: false,
               currentY: initialPosition.y,
             });
@@ -264,14 +199,70 @@ onMounted(() => {
         p.scale(scaleFactor);
         p.translate(translateX, translateY);
 
-        // Draw grid lines
-        p.stroke(50);
-        p.strokeWeight(1 / scaleFactor);
-        for (let x = 0; x <= p.width / scaleFactor; x += gridSize + padding) {
-          p.line(x, 0, x, p.height / scaleFactor);
-        }
-        for (let y = 0; y <= p.height / scaleFactor; y += gridSize + padding) {
-          p.line(0, y, p.width / scaleFactor, y);
+        // // Draw grid lines
+        // p.stroke(50);
+        // p.strokeWeight(1 / scaleFactor);
+        // for (let x = 0; x <= p.width / scaleFactor; x += gridSize + padding) {
+        //   p.line(x, 0, x, p.height / scaleFactor);
+        // }
+        // for (let y = 0; y <= p.height / scaleFactor; y += gridSize + padding) {
+        //   p.line(0, y, p.width / scaleFactor, y);
+        // }
+
+        // Draw right-angle lines connecting parent and child boxes
+        // Draw right-angle lines connecting parent and child boxes
+        // Draw right-angle lines connecting parent and child boxes
+        for (let child of staticPositions) {
+          if (child.parent_id) {
+            let parent = staticPositions.find((pos) => pos._id === child.parent_id);
+            if (parent) {
+              // Calculate start (parent) and end (child) positions
+              let parentCenterX = parent.pos.x + gridSize / 2;
+              let parentCenterY = parent.currentY + gridSize / 2;
+              let childCenterX = child.pos.x + gridSize / 2;
+              let childCenterY = child.currentY + gridSize / 2;
+
+              // Draw horizontal line from parent to the child's X
+              p.stroke(200, 200, 200); // Line color
+              p.strokeWeight(1 / scaleFactor);
+              p.line(parentCenterX, parentCenterY, childCenterX, parentCenterY);
+
+              // Draw vertical line from the child's X to the child's Y
+              p.line(childCenterX, parentCenterY, childCenterX, childCenterY);
+
+              // Display the "type" at the midpoint of the horizontal line
+              let midPointX = (parentCenterX + childCenterX) / 2;
+              let midPointY = parentCenterY;
+
+              p.fill(255); // Set text color to white
+              p.textAlign(p.CENTER, p.CENTER); // Center the text
+              p.text(child.type, midPointX, midPointY - 15); // Adjust Y position to place text above the line
+
+              // Draw a triangle to indicate the direction
+              let triangleSize = 5 / scaleFactor; // Adjust size based on zoom level
+              if (childCenterX > parentCenterX) {
+                // Pointing right
+                p.triangle(
+                  midPointX - triangleSize,
+                  midPointY - triangleSize, // Left point
+                  midPointX - triangleSize,
+                  midPointY + triangleSize, // Bottom point
+                  midPointX + triangleSize,
+                  midPointY, // Right point
+                );
+              } else {
+                // Pointing left
+                p.triangle(
+                  midPointX + triangleSize,
+                  midPointY - triangleSize, // Right point
+                  midPointX + triangleSize,
+                  midPointY + triangleSize, // Bottom point
+                  midPointX - triangleSize,
+                  midPointY, // Left point
+                );
+              }
+            }
+          }
         }
 
         // Draw static positions
@@ -321,6 +312,7 @@ onMounted(() => {
             p.noStroke(); // No stroke for other squares
           }
 
+          //Draw Main Box
           p.rect(sp.pos.x, sp.currentY, gridSize, gridSize);
 
           // Display the prompt index on top of the image
@@ -466,16 +458,12 @@ onMounted(() => {
             promptIndex: number;
             _id?: string;
             parent_id?: string;
-            // alpha: number;
-            // isNoisy: boolean;
-            // isVertical: boolean;
             isAnimating: boolean;
             currentY: number;
             startY?: number;
             targetY?: number;
             animationStartTime?: number;
             animationDuration?: number;
-            // refactoredstep: number;
           };
 
           if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
@@ -500,49 +488,39 @@ onMounted(() => {
               }
             });
 
+            console.log(`right before type: ${selectedType}`);
+
             // Create new image state with elastic animation
             newImage = {
               pos: p.createVector(lastImage.pos.x, newY),
               color: p.color(128, 0, 128, 255), // Purple for vertical drags
-              type: lastImage.type, // Same type as parent
+              type: selectedType, // Same type as parent
               step: lastImage.step,
               promptIndex: promptSteps,
               _id: undefined,
               parent_id: lastImage._id, // Link to the parent
-              // alpha: 255,
-              // isNoisy: lastImage.isNoisy,
-              // isVertical: true, // Set isVertical to true for purple
               isAnimating: true,
               currentY: lastImage.pos.y,
               startY: lastImage.pos.y,
               targetY: newY,
               animationStartTime: p.millis(),
               animationDuration: 500,
-              // refactoredstep: lastImage.refactoredstep,
             };
 
             staticPositions.push(newImage);
 
-            // // Fade older images
-            // for (let img of staticPositions) {
-            //   if (img !== newImage) {
-            //     img.alpha = Math.max(100, img.alpha - 20);
-            //   }
-            // }
-
             // Create ImageDoc in the backend
             const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
-            const type = newImage.type ? "noise" : "denoise";
+            // const type = newImage.type ? "noise" : "denoise";
             const stepString = newImage.step.toString();
             // const refactoredStepString = newImage.refactoredstep.toString();
 
             console.log(`Parent ID feeding in: ${selectedParentId}`);
-            const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, type, stepString, newImage.promptIndex);
+            console.log(`TYPE feeding in: ${selectedType}`);
+            const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, selectedType, stepString, newImage.promptIndex);
 
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
-              // newImage.parent_id = createdImageDoc.parent || lastImage._id;
-              // selectedParentId = createdImageDoc._id || selectedParentId;
             }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
@@ -555,9 +533,6 @@ onMounted(() => {
               let isNoisy = direction === "noise";
               let newX = lastImage.pos.x + steps * (gridSize + padding) * (isNoisy ? -1 : 1);
 
-              // Calculate refactoredstep
-              // let refactoredstep = steps * 80;
-
               // Add new image state
               newImage = {
                 pos: p.createVector(newX, lastImage.pos.y),
@@ -567,19 +542,17 @@ onMounted(() => {
                 promptIndex: lastImage.promptIndex ?? 0, // Keep existing promptIndex or default to 0
                 _id: lastImage._id,
                 parent_id: lastImage._id, // Link to the parent
-                // alpha: 255,
-                // isNoisy: isNoisy,
-                // isVertical: false,
                 isAnimating: false,
                 currentY: lastImage.pos.y,
-                // refactoredstep: refactoredstep,
               };
 
               staticPositions.push(newImage);
 
               console.log("dragged horizontally!");
+              console.log(`midway type is: ${direction}`);
               selectedParentId = lastImage._id || "null";
               console.log(`hih Parent ID is: ${selectedParentId}`);
+              selectedType = direction;
             }
           }
         }
