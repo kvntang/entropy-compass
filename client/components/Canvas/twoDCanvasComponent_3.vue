@@ -144,12 +144,8 @@ onMounted(() => {
 
         ///1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
-        initialPosition = p.createVector(600, 40); // Start at (0, 0) in world coordinates
+        initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
         camPos = initialPosition.copy(); // Center camera on initial position
-
-        // Initialize translateX and translateY for panning adjustments
-        translateX = -camPos.x; // Translate the camera horizontally
-        translateY = -camPos.y; // Translate the camera vertically
 
         // Create New
         if (props.images.length === 0) {
