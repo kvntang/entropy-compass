@@ -211,7 +211,6 @@ onMounted(() => {
 
         // Draw right-angle lines connecting parent and child boxes
         // Draw right-angle lines connecting parent and child boxes
-        // Draw right-angle lines connecting parent and child boxes
         for (let child of staticPositions) {
           if (child.parent_id) {
             let parent = staticPositions.find((pos) => pos._id === child.parent_id);
@@ -236,7 +235,8 @@ onMounted(() => {
 
               p.fill(255); // Set text color to white
               p.textAlign(p.CENTER, p.CENTER); // Center the text
-              p.text(child.type, midPointX, midPointY - 15); // Adjust Y position to place text above the line
+              let text = `${child.type} ${child.step}`; //concant
+              p.text(text, midPointX, midPointY - 15); // Adjust Y position to place text above the line
 
               // Draw a triangle to indicate the direction
               let triangleSize = 5 / scaleFactor; // Adjust size based on zoom level
@@ -261,6 +261,24 @@ onMounted(() => {
                   midPointY, // Left point
                 );
               }
+
+              // Draw a box at the corner
+              let cornerX = childCenterX;
+              let cornerY = parentCenterY;
+
+              // Set color based on type
+              if (child.type === "noise") {
+                p.fill(255, 0, 0); // Red for noise
+              } else if (child.type === "denoise") {
+                p.fill(0, 0, 255); // Blue for denoise
+              } else {
+                p.fill(128, 0, 128); // Purple for other types
+              }
+
+              // Draw the corner box
+              let boxSize = 10 / scaleFactor; // Adjust size based on zoom level
+              p.noStroke();
+              p.rect(cornerX - boxSize / 2, cornerY - boxSize / 2, boxSize, boxSize);
             }
           }
         }
@@ -318,8 +336,8 @@ onMounted(() => {
           // Display the prompt index on top of the image
           p.fill(255);
           p.text(sp.promptIndex, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2);
-          p.text(`ID: ${sp._id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 30); // Object ID
-          p.text(`Parent: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
+          // p.text(`ID: ${sp._id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 30); // Object ID
+          // p.text(`Parent: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
         }
 
         // Draw drag preview --------------------------------------------------------------
@@ -435,8 +453,6 @@ onMounted(() => {
         }
 
         if (isDragging) {
-          console.log(`isdragging Parent ID feeding in: ${selectedParentId}`);
-
           // Adjust mouse coordinates for scaling and translation
           let mouseXWorld = (p.mouseX - translateX) / scaleFactor;
           let mouseYWorld = (p.mouseY - translateY) / scaleFactor;
@@ -488,8 +504,6 @@ onMounted(() => {
               }
             });
 
-            console.log(`right before type: ${selectedType}`);
-
             // Create new image state with elastic animation
             newImage = {
               pos: p.createVector(lastImage.pos.x, newY),
@@ -511,12 +525,8 @@ onMounted(() => {
 
             // Create ImageDoc in the backend
             const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
-            // const type = newImage.type ? "noise" : "denoise";
             const stepString = newImage.step.toString();
-            // const refactoredStepString = newImage.refactoredstep.toString();
 
-            console.log(`Parent ID feeding in: ${selectedParentId}`);
-            console.log(`TYPE feeding in: ${selectedType}`);
             const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, selectedType, stepString, newImage.promptIndex);
 
             if (createdImageDoc) {
@@ -548,10 +558,7 @@ onMounted(() => {
 
               staticPositions.push(newImage);
 
-              console.log("dragged horizontally!");
-              console.log(`midway type is: ${direction}`);
               selectedParentId = lastImage._id || "null";
-              console.log(`hih Parent ID is: ${selectedParentId}`);
               selectedType = direction;
             }
           }
