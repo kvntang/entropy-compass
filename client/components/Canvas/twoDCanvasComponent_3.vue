@@ -38,13 +38,7 @@ const canvasContainer = ref(null);
  * @param promptIndex - The prompt index calculated from angle deviation.
  * @returns The created ImageDoc's data.
  */
-const createImageDoc = async (
-  parentId: string,
-  coordinate: string,
-  type: string,
-  step: string,
-  promptIndex: number
-): Promise<ImageDoc | null> => {
+const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number): Promise<ImageDoc | null> => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
     const response = await fetchy("/api/images", "POST", {
@@ -60,9 +54,7 @@ const createImageDoc = async (
         promptedImage: "",
       },
     });
-    console.log(
-      `ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`
-    );
+    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
     emit("refreshImages"); // Let the parent know to refresh the images
     return response as ImageDoc; // Return the created ImageDoc
   } catch (error) {
@@ -143,20 +135,21 @@ onMounted(() => {
       // Selected parent ID for creating new ImageDocs
       let selectedParentId: string | null = null;
 
+      //-------------------SETUP----------------------------------------------------------------------------
       p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent(canvasContainer.value);
 
+        ///1. Initialize the first ImageDoc if staticPositions is empty
+        // Initival Vector
         initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
         camPos = initialPosition.copy(); // Center camera on initial position
 
-        // 1. Initialize a starting point if database is empty
+        // Create New
         if (props.images.length === 0) {
-          const coordinate = `${Math.round(initialPosition.x)},${Math.round(
-            initialPosition.y
-          )}`;
+          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
           try {
             // Create the initial ImageDoc
             const createdImageDoc = await createImageDoc(
@@ -164,7 +157,7 @@ onMounted(() => {
               coordinate,
               "denoise", // Initial type is "denoise"
               "0", // Step is 0 for the root node
-              0 // Prompt index is 0 for the root node
+              0, // Prompt index is 0 for the root node
             );
 
             if (createdImageDoc) {
@@ -181,10 +174,7 @@ onMounted(() => {
 
               // Set the initial parent to the created ImageDoc
               selectedParentId = createdImageDoc._id;
-              console.log(
-                "Initial ImageDoc created and added to static positions.",
-                `Parent ID set to: ${selectedParentId}`
-              );
+              console.log("Initial ImageDoc created and added to static positions.", `Parent ID set to: ${selectedParentId}`);
             }
           } catch (error) {
             console.error("Error creating initial ImageDoc:", error);
@@ -193,8 +183,10 @@ onMounted(() => {
           // 2. Load database initial static positions from props
           props.images.forEach((image) => {
             const [x, y] = image.coordinate.split(",").map(Number);
-            let color: p5.Color =
-              image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+
+            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+
+            // populate list
             staticPositions.push({
               pos: p.createVector(x, y),
               color,
@@ -206,11 +198,11 @@ onMounted(() => {
             });
           });
 
-          // Automatically select the last image as the parent
-          if (props.images.length > 0) {
-            selectedParentId = props.images[props.images.length - 1]._id;
-            console.log(`Selected parent ID set to: ${selectedParentId}`);
-          }
+          // // Automatically select the last image as the parent
+          // if (props.images.length > 0) {
+          //   selectedParentId = props.images[props.images.length - 1]._id;
+          //   console.log(`Selected parent ID set to: ${selectedParentId}`);
+          // }
         }
 
         // Initialize point at the selected parent's position
@@ -231,12 +223,10 @@ onMounted(() => {
        * Convert mouse coordinates to world coordinates considering camera transformations.
        */
       function getMouseWorld() {
-        return p.createVector(
-          (p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x,
-          (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y
-        );
+        return p.createVector((p.mouseX - p.width / 2 - translateX) / scaleFactor + camPos.x, (p.mouseY - p.height / 2 - translateY) / scaleFactor + camPos.y);
       }
 
+      //-------------------DRAW----------------------------------------------------------------------------
       p.draw = () => {
         p.background(10);
 
@@ -276,12 +266,7 @@ onMounted(() => {
         staticPositions.forEach((sp) => {
           p.push();
           p.fill(sp.color);
-          p.stroke(
-            sp._id === selectedParentId ? 255 : 0,
-            sp._id === selectedParentId ? 255 : 0,
-            0,
-            sp._id === selectedParentId ? 255 : 0
-          ); // Highlight selected parent
+          p.stroke(sp._id === selectedParentId ? 255 : 0, sp._id === selectedParentId ? 255 : 0, 0, sp._id === selectedParentId ? 255 : 0); // Highlight selected parent
           p.strokeWeight(sp._id === selectedParentId ? 2 : 1);
           p.rectMode(p.CENTER);
           p.rect(sp.pos.x, sp.pos.y, 40, 40);
@@ -292,18 +277,10 @@ onMounted(() => {
           // Display objectID and type/prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
-            p.text(
-              `${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`,
-              sp.pos.x,
-              sp.pos.y - 20
-            );
+            p.text(`${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`, sp.pos.x, sp.pos.y - 20);
           } else {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
-            p.text(
-              sp.type === "noise" ? "Noised" : "Denoised",
-              sp.pos.x,
-              sp.pos.y - 20
-            );
+            p.text(sp.type === "noise" ? "Noised" : "Denoised", sp.pos.x, sp.pos.y - 20);
           }
         });
 
@@ -329,12 +306,7 @@ onMounted(() => {
 
           // Draw horizontal reference line
           p.stroke(100, 100, 100);
-          p.line(
-            point.pos.x - dynamicRadius,
-            point.pos.y,
-            point.pos.x + dynamicRadius,
-            point.pos.y
-          );
+          p.line(point.pos.x - dynamicRadius, point.pos.y, point.pos.x + dynamicRadius, point.pos.y);
 
           // Calculate angle from horizontal
           let angleRadians = Math.atan2(dragVector.y, dragVector.x);
@@ -342,8 +314,7 @@ onMounted(() => {
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees =
-            Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
@@ -352,12 +323,7 @@ onMounted(() => {
           let snappedAngleRadians = p.radians(snappedAngleDegrees);
 
           // The shooting direction should be opposite to the drag direction
-          let direction = p
-            .createVector(
-              -Math.cos(snappedAngleRadians),
-              -Math.sin(snappedAngleRadians)
-            )
-            .mult(dynamicRadius);
+          let direction = p.createVector(-Math.cos(snappedAngleRadians), -Math.sin(snappedAngleRadians)).mult(dynamicRadius);
 
           // Draw the launch line
           p.stroke(255);
@@ -375,11 +341,7 @@ onMounted(() => {
           const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
           p.text(promptIndex, lineEnd.x, lineEnd.y);
           p.textSize(14);
-          p.text(
-            "Pick a prompt! The lower the number, \n the more similar to the original prompt.",
-            point.pos.x,
-            point.pos.y - dynamicRadius - 30
-          );
+          p.text("Pick a prompt! The lower the number, \n the more similar to the original prompt.", point.pos.x, point.pos.y - dynamicRadius - 30);
         }
 
         p.pop();
@@ -398,19 +360,12 @@ onMounted(() => {
             // Add to static positions with the actual _id from the created ImageDoc
             // Assuming that the ImageDoc has been created and props.images have been refreshed
             // Find the newly created ImageDoc based on coordinates
-            const newImage = props.images.find(
-              (img) =>
-                img.coordinate ===
-                `${Math.round(point.pos.x)},${Math.round(point.pos.y)}`
-            );
+            const newImage = props.images.find((img) => img.coordinate === `${Math.round(point.pos.x)},${Math.round(point.pos.y)}`);
 
             if (newImage) {
               staticPositions.push({
                 pos: p.createVector(point.pos.x, point.pos.y),
-                color:
-                  newImage.type === "noise"
-                    ? p.color(255, 0, 0)
-                    : p.color(0, 0, 255),
+                color: newImage.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255),
                 type: newImage.type,
                 step: Number(newImage.step),
                 promptIndex: Number(newImage.prompt),
@@ -422,9 +377,7 @@ onMounted(() => {
               selectedParentId = newImage._id;
               console.log(`New parent selected: ${selectedParentId}`);
             } else {
-              console.error(
-                "New ImageDoc not found in props.images. Ensure that 'refreshImages' emits correctly."
-              );
+              console.error("New ImageDoc not found in props.images. Ensure that 'refreshImages' emits correctly.");
             }
           } else {
             moveVector.setMag(speed);
@@ -437,17 +390,10 @@ onMounted(() => {
       p.mousePressed = (event: MouseEvent) => {
         if (mouseInCanvas()) {
           // Check if clicking on the selected parent box to shoot
-          const selectedParent = staticPositions.find(
-            (sp) => sp._id === selectedParentId
-          );
+          const selectedParent = staticPositions.find((sp) => sp._id === selectedParentId);
           if (selectedParent) {
             const parentScreenPos = screenPos(selectedParent.pos);
-            const distance = p.dist(
-              p.mouseX,
-              p.mouseY,
-              parentScreenPos.x,
-              parentScreenPos.y
-            );
+            const distance = p.dist(p.mouseX, p.mouseY, parentScreenPos.x, parentScreenPos.y);
             if (distance < 20 * scaleFactor) {
               // Start shooting
               isDraggingNew = true;
@@ -531,8 +477,7 @@ onMounted(() => {
 
           // Snap angle to nearest 10 degrees
           let angleIncrement = 10;
-          let snappedAngleDegrees =
-            Math.round(angleDegrees / angleIncrement) * angleIncrement;
+          let snappedAngleDegrees = Math.round(angleDegrees / angleIncrement) * angleIncrement;
 
           // Normalize snappedAngleDegrees to be within 0-360
           if (snappedAngleDegrees >= 360) snappedAngleDegrees -= 360;
@@ -551,51 +496,33 @@ onMounted(() => {
           let step = dragVector.mag();
 
           // Calculate movement direction (opposite to drag direction)
-          let movementDirection = p
-            .createVector(
-              -Math.cos(p.radians(snappedAngleDegrees)),
-              -Math.sin(p.radians(snappedAngleDegrees))
-            )
-            .setMag(step);
+          let movementDirection = p.createVector(-Math.cos(p.radians(snappedAngleDegrees)), -Math.sin(p.radians(snappedAngleDegrees))).setMag(step);
 
           // Calculate final position
           let finalPos = p5.Vector.add(point.pos, movementDirection);
 
           // Assign final position and properties to point
           point.finalPos = finalPos.copy();
-          const { promptIndex } = getPromptIndex(
-            point.type,
-            snappedAngleDegrees
-          );
+          const { promptIndex } = getPromptIndex(point.type, snappedAngleDegrees);
           finalPromptIndex = promptIndex;
           point.promptIndex = finalPromptIndex;
           point.step = step;
           point.isMoving = true;
 
           // Create ImageDoc in the backend
-          const coordinate = `${Math.round(finalPos.x)},${Math.round(
-            finalPos.y
-          )}`;
+          const coordinate = `${Math.round(finalPos.x)},${Math.round(finalPos.y)}`;
           const stepString = step.toString();
 
           const parentId = selectedParentId;
 
           if (!parentId) {
-            console.error(
-              "Parent ID is undefined. Skipping ImageDoc creation."
-            );
+            console.error("Parent ID is undefined. Skipping ImageDoc creation.");
             return;
           }
 
           console.log(`Parent ID is: ${parentId}`);
 
-          const createdImageDoc = await createImageDoc(
-            parentId,
-            coordinate,
-            point.type,
-            stepString,
-            point.promptIndex
-          );
+          const createdImageDoc = await createImageDoc(parentId, coordinate, point.type, stepString, point.promptIndex);
 
           if (!createdImageDoc) {
             console.error("Failed to create new ImageDoc.");
@@ -613,10 +540,7 @@ onMounted(() => {
           for (let i = staticPositions.length - 1; i >= 0; i--) {
             const sp = staticPositions[i];
             const screenPosition = screenPos(sp.pos);
-            if (
-              p.dist(p.mouseX, p.mouseY, screenPosition.x, screenPosition.y) <
-              20 * scaleFactor
-            ) {
+            if (p.dist(p.mouseX, p.mouseY, screenPosition.x, screenPosition.y) < 20 * scaleFactor) {
               clickedBox = sp;
               break;
             }
@@ -639,10 +563,8 @@ onMounted(() => {
             scaleFactor = p.constrain(scaleFactor, minScale, maxScale);
 
             // Adjust translateX and translateY to keep the focus on the mouse position
-            let mouseXWorld =
-              (p.mouseX - translateX - p.width / 2) / scaleFactor;
-            let mouseYWorld =
-              (p.mouseY - translateY - p.height / 2) / scaleFactor;
+            let mouseXWorld = (p.mouseX - translateX - p.width / 2) / scaleFactor;
+            let mouseYWorld = (p.mouseY - translateY - p.height / 2) / scaleFactor;
             translateX -= mouseXWorld * zoomAmount;
             translateY -= mouseYWorld * zoomAmount;
 
@@ -659,12 +581,7 @@ onMounted(() => {
       };
 
       function mouseInCanvas() {
-        return (
-          p.mouseX >= 0 &&
-          p.mouseX <= p.width &&
-          p.mouseY >= 0 &&
-          p.mouseY <= p.height
-        );
+        return p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
       }
 
       /**

@@ -12,19 +12,17 @@ import p5 from "p5";
 import { onMounted, onUnmounted, ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
-// Define the ImageDoc interface to match the 2D canvas structure
 interface ImageDoc {
   author: string;
-  parent?: string; // Optional for 1D canvas
+  parent: string; // Parent ImageDoc ID
   coordinate: string; // stored as x, y
   prompt: string;
-  type: string;
+  type?: string;
   step: string;
-  refactoredstep: string;
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
-  _id?: string; // Optional, assigned after creation
+  _id: string;
 }
 
 // from parent code
@@ -39,31 +37,25 @@ const canvasContainer = ref(null);
 /**
  * Function to create ImageDoc in the backend
  */
-const createImageDoc = async (
-  parentId: string | null, // Allow null for root images
-  coordinate: string,
-  type: string,
-  step: string,
-  promptIndex: number,
-  refactoredstep: string,
-): Promise<ImageDoc | null> => {
+const createImageDoc = async (parentId: string, coordinate: string, type: string, step: string, promptIndex: number): Promise<ImageDoc | null> => {
   try {
     const authorId = "mocked-author-id"; // Mocked user
     const response = await fetchy("/api/images", "POST", {
       body: {
         author: authorId,
-        parent: parentId, // Can be null
+        parent: parentId,
         coordinate,
         type,
         step,
         prompt: promptIndex.toString(),
-        refactoredstep,
         originalImage: "",
         steppedImage: "",
         promptedImage: "",
       },
     });
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, PromptIndex: ${promptIndex}, RefactoredStep: ${refactoredstep}`);
+    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
+    emit("refreshImages"); // Let the parent know to refresh the images
+    console.log("refreshed");
     return response as ImageDoc; // Return the created ImageDoc
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
@@ -71,63 +63,29 @@ const createImageDoc = async (
   }
 };
 
-/**
- * Function to set the index logic.
- * The type determines the ordering of the index, which will be mapped to the similarity of the prompted word.
- */
-function getPromptIndex(type: string, snappedAngleDegrees: number) {
-  let promptIndex = 0;
-
-  if (type === "noise") {
-    if (snappedAngleDegrees === 0) {
-      promptIndex = 0;
-    } else if (snappedAngleDegrees > 0 && snappedAngleDegrees <= 180) {
-      // Upper circle
-      promptIndex = Math.ceil(snappedAngleDegrees / 10) * 2 - 1; // Converts 10° to 1, 20° to 3, etc.
-    } else if (snappedAngleDegrees > 180) {
-      // Lower circle
-      promptIndex = Math.ceil((360 - snappedAngleDegrees) / 10) * 2;
-    }
-  } else if (type === "denoise") {
-    if (snappedAngleDegrees === 180) {
-      promptIndex = 0;
-    } else if (snappedAngleDegrees < 180) {
-      // Upper circle
-      promptIndex = Math.ceil((180 - snappedAngleDegrees) / 10) * 2 - 1;
-    } else if (snappedAngleDegrees > 180) {
-      // Lower circle
-      promptIndex = Math.ceil((snappedAngleDegrees - 180) / 10) * 2;
-    }
-  }
-
-  // Return the calculated promptIndex
-  return { promptIndex: Math.floor(promptIndex) };
-}
-
 //--------------------------------------------------------------------------------------------------------------
 
 onMounted(() => {
   if (canvasContainer.value) {
     const sketch = new p5((p) => {
-      // Variables
+      // Variables: this is for local use only, not for storing into ImageDoc
       let staticPositions: {
         pos: p5.Vector;
         color: p5.Color;
-        type: string;
+        type?: string;
         step: number;
         promptIndex?: number;
         _id?: string;
         parent_id?: string;
         alpha: number;
-        isNoisy: boolean;
-        isVertical: boolean;
+        // isNoisy: boolean;
+        // isVertical: boolean;
         isAnimating: boolean;
         currentY: number;
         startY?: number;
         targetY?: number;
         animationStartTime?: number;
         animationDuration?: number;
-        refactoredstep: number;
       }[] = [];
 
       let isDragging = false;
@@ -157,11 +115,12 @@ onMounted(() => {
        */
       function calculateInitialPosition(canvasWidth: number) {
         // Position the initial square at the center-top of the canvas, aligned to grid
-        const initialX = Math.round(p.width / 2 / (gridSize + padding)) * (gridSize + padding);
+        const initialX = Math.round(canvasWidth / 2 / (gridSize + padding)) * (gridSize + padding);
         const initialY = gridSize; // One gridSize below the top
         return p.createVector(initialX, initialY);
       }
 
+      //-------------------SETUP----------------------------------------------------------------------------
       p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
@@ -170,50 +129,78 @@ onMounted(() => {
 
         p.rectMode(p.CORNER); // Ensure rectMode is CORNER
 
+        //1. Initialize the first ImageDoc if staticPositions is empty
+        // Initival Vector
         initialPosition = calculateInitialPosition(canvasWidth);
 
-        //1. Initialize the first ImageDoc if staticPositions is empty
-        if (staticPositions.length === 0) {
+        // Create New
+        if (props.images.length === 0) {
           const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
-          const type = "denoise"; // Initial type
-          const step = "0"; // Initial step
-          const promptIndex = 0; // Initial prompt index
-          const refactoredstep = "0"; // Initial refactored step
 
-          const createdImageDoc = await createImageDoc(
-            null, // No parent for the initial ImageDoc
-            coordinate,
-            type,
-            step,
-            promptIndex,
-            refactoredstep,
-          );
+          try {
+            // Create the initial ImageDoc
+            const createdImageDoc = await createImageDoc(
+              "", // Parent ID is empty for the root node
+              coordinate,
+              "denoise", // Initial type is "denoise"
+              "0", // Step is 0 for the root node
+              0, // Prompt index is 0 for the root node
+            );
 
-          if (createdImageDoc) {
+            if (createdImageDoc) {
+              // Push it to staticPositions with blue color (denoise)
+              staticPositions.push({
+                pos: initialPosition.copy(),
+                color: p.color(0, 0, 255), // Blue for denoise
+                type: "denoise",
+                step: 0,
+                promptIndex: 0,
+                _id: createdImageDoc._id, //Use the response ID from the API
+                parent_id: undefined, // No parent for the initial node
+                // One D stuff here
+                alpha: 255,
+                // isNoisy: false,
+                // isVertical: false,
+                isAnimating: false,
+                currentY: initialPosition.y,
+              });
+              // Set the initial parent to the created ImageDoc
+              selectedParentId = createdImageDoc._id;
+              console.log("Initial ImageDoc created and added to staticPositions:", staticPositions[0], `Parent ID set to: ${selectedParentId}`);
+            }
+          } catch (error) {
+            console.error("Error creating initial ImageDoc:", error);
+          }
+        } else {
+          // 2. Load database initial static positions from props
+          props.images.forEach((image) => {
+            const [x, y] = image.coordinate.split(",").map(Number); //2d coordinates
+
+            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255); // Red for noise, blue for denoise
+
+            // populate list
             staticPositions.push({
-              pos: initialPosition.copy(),
-              color: p.color(0, 0, 255), // Blue for denoise
-              type: type,
-              step: 0,
-              promptIndex: promptIndex,
-              _id: createdImageDoc._id,
-              parent_id: undefined, // No parent
+              pos: p.createVector(x, y), //not going to use this for 1d rendering
+              color,
+              type: image.type,
+              step: Number(image.step),
+              promptIndex: Number(image.prompt),
+              _id: image._id,
+              parent_id: image.parent,
+              // One D stuff here, not sure what they need to be yet
               alpha: 255,
-              isNoisy: false,
-              isVertical: false,
+              // isNoisy: false,
+              // isVertical: false,
               isAnimating: false,
               currentY: initialPosition.y,
-              refactoredstep: 0,
             });
-            selectedParentId = createdImageDoc._id || null;
-            console.log("Initial ImageDoc created and added to staticPositions:", staticPositions[0]);
-          }
+          });
         }
-
         // **Log the initial image's information**
-        console.log("Static Positions:", staticPositions);
+        console.log("Loaded Static Positions:", staticPositions);
       };
 
+      //-------------------DRAW----------------------------------------------------------------------------
       p.draw = () => {
         p.background(20);
 
@@ -231,55 +218,75 @@ onMounted(() => {
           p.line(0, y, p.width / scaleFactor, y);
         }
 
-        // Draw static positions
         p.textAlign(p.CENTER, p.CENTER);
         p.textSize(14 / scaleFactor);
-        for (let img of staticPositions) {
+
+        // Draw all static positions
+        staticPositions.forEach((sp) => {
           // Handle elastic animation
-          if (img.isAnimating) {
-            let t = img.animationStartTime ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1) : 0;
+          if (sp.isAnimating) {
+            let t = sp.animationStartTime ? (p.millis() - sp.animationStartTime) / (sp.animationDuration || 1) : 0;
             t = p.constrain(t, 0, 1);
             let easeT = easeOutElastic(t);
 
-            img.currentY = p.lerp(img.startY || img.pos.y, img.targetY || img.pos.y, easeT);
+            sp.currentY = p.lerp(sp.startY || sp.pos.y, sp.targetY || sp.pos.y, easeT);
 
             if (t >= 1) {
-              img.isAnimating = false;
-              if (img.targetY !== undefined) {
-                img.pos.y = img.targetY;
+              sp.isAnimating = false;
+              if (sp.targetY !== undefined) {
+                sp.pos.y = sp.targetY;
               }
-              img.currentY = img.targetY !== undefined ? img.targetY : img.currentY;
+              sp.currentY = sp.targetY !== undefined ? sp.targetY : sp.currentY;
             }
           } else {
-            img.currentY = img.pos.y;
+            sp.currentY = sp.pos.y;
           }
-
-          let squareColor;
-          if (img.isVertical) {
-            squareColor = p.color(128, 0, 128, img.alpha); // Purple for vertical drags
-          } else {
-            squareColor = img.isNoisy
-              ? p.color(255, 0, 0, img.alpha) // Red for noise
-              : p.color(0, 0, 255, img.alpha); // Blue for denoise
-          }
-          p.fill(squareColor);
 
           // Highlight the last image with a yellow outline
-          if (img === staticPositions[staticPositions.length - 1]) {
+          if (sp === staticPositions[staticPositions.length - 1]) {
             p.stroke(255, 255, 0); // Yellow color
             p.strokeWeight(1 / scaleFactor);
           } else {
             p.noStroke(); // No stroke for other squares
           }
 
-          p.rect(img.pos.x, img.currentY, gridSize, gridSize);
+          // -----------------------------------
+          // Draw HORIZONTAL box (type)
+          const direction = sp.type === "noise" ? -1 : 1; // Left if "red", right if "blue"
+          const factor = direction * sp.step * gridSize;
+          let horX = sp.pos.x + factor;
+          let horY = sp.pos.y; // Same row as parent
 
-          // Display the prompt index on top of the image
+          // Draw Square
+          p.fill(sp.color); // Color based on "type" already defined
+          p.rect(horX, horY, gridSize, gridSize);
+
+          // Display type, step, and object ID inside the square
           p.fill(255);
-          p.text(img.promptIndex, img.pos.x + gridSize / 2, img.currentY + gridSize / 2);
-        }
+          p.text(sp.type, horX + gridSize / 2, horY + gridSize / 2 - 10); // Type
+          p.text(`Step: ${sp.step}`, horX + gridSize / 2, horY + gridSize / 2); // Step
+          p.text(`ID: ${sp._id || "N/A"}`, horX + gridSize / 2, horY + gridSize / 2 + 10); // Object ID
+          p.text(`PID: ${sp.parent_id || "N/A"}`, horX + gridSize / 2, horY + gridSize / 2 + 30); // Parent  ID
 
-        // Draw drag preview
+          // -----------------------------------
+          // Draw VERTICAL box (purple) only for vertical drags
+          if (sp.type === "denoise" && sp.step === 0) {
+            let purpleX = horX; // Same as horizontal box
+            let purpleY = horY + gridSize; // One row down
+
+            // Draw Square
+            p.fill(p.color(128, 0, 128)); // Purple color
+            p.rect(purpleX, purpleY, gridSize, gridSize);
+
+            // Display prompt index and object ID inside the purple square
+            p.fill(p.color(220, 100, 208));
+            p.text(`Index: ${sp.promptIndex}`, purpleX + gridSize / 2, purpleY + gridSize / 2 - 10); // Index
+            p.text(`ID: ${sp._id || "N/A"}`, purpleX + gridSize / 2, purpleY + gridSize / 2 + 10); // Object ID
+            p.text(`PID: ${sp.parent_id || "N/A"}`, horX + gridSize / 2, horY + gridSize / 2 + 20); // Parent  ID
+          }
+        });
+
+        // Draw drag preview (if applicable)
         if (isDragging) {
           // Adjust mouse coordinates for scaling and translation
           let mouseXWorld = (p.mouseX - translateX) / scaleFactor;
@@ -311,7 +318,7 @@ onMounted(() => {
 
             // Draw drag preview as an outline rectangle
             p.noFill(); // Remove fill
-            p.stroke(lastImage.isNoisy ? p.color(255, 0, 0) : p.color(0, 0, 255)); // Set stroke color based on state
+            p.stroke(lastImage.type ? p.color(255, 0, 0) : p.color(0, 0, 255)); // Set stroke color based on state
             p.strokeWeight(1 / scaleFactor); // Consistent stroke weight
             p.rect(lastImage.pos.x, lastImage.pos.y + (gridSize + padding) * promptSteps, gridSize, gridSize);
 
@@ -408,24 +415,22 @@ onMounted(() => {
           let newImage: {
             pos: p5.Vector;
             color: p5.Color;
-            type: string;
+            type?: string;
             step: number;
             promptIndex: number;
             _id?: string;
             parent_id?: string;
             alpha: number;
-            isNoisy: boolean;
-            isVertical: boolean;
             isAnimating: boolean;
             currentY: number;
             startY?: number;
             targetY?: number;
             animationStartTime?: number;
             animationDuration?: number;
-            refactoredstep: number;
           };
 
           if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
+            //--------------------------------------------------
             // Vertical dragging (editing prompt index)
             // Calculate prompt steps based on drag distance
             const rowHeight = gridSize + padding;
@@ -455,33 +460,22 @@ onMounted(() => {
               _id: undefined,
               parent_id: lastImage._id, // Link to the parent
               alpha: 255,
-              isNoisy: lastImage.isNoisy,
-              isVertical: true, // Set isVertical to true for purple
               isAnimating: true,
               currentY: lastImage.pos.y,
               startY: lastImage.pos.y,
               targetY: newY,
               animationStartTime: p.millis(),
               animationDuration: 500,
-              refactoredstep: lastImage.refactoredstep,
             };
 
             staticPositions.push(newImage);
 
-            // Fade older images
-            for (let img of staticPositions) {
-              if (img !== newImage) {
-                img.alpha = Math.max(100, img.alpha - 20);
-              }
-            }
-
             // Create ImageDoc in the backend
             const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
-            const type = newImage.isNoisy ? "noise" : "denoise";
+            const type = newImage.type;
             const stepString = newImage.step.toString();
-            const refactoredStepString = newImage.refactoredstep.toString();
 
-            const createdImageDoc = await createImageDoc(lastImage._id || null, coordinate, type, stepString, newImage.promptIndex, refactoredStepString);
+            const createdImageDoc = await createImageDoc(lastImage._id, coordinate, type, stepString, newImage.promptIndex);
 
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
@@ -489,56 +483,36 @@ onMounted(() => {
               selectedParentId = createdImageDoc._id || selectedParentId;
             }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
+            //--------------------------------------------------
             // Horizontal dragging (noise/denoise)
             let steps = Math.floor(Math.abs(dragDistanceX) / stepDistance);
 
             if (steps > 0) {
               let direction = dragDistanceX < 0 ? "noise" : "denoise";
-              let isNoisy = direction === "noise";
-              let newX = lastImage.pos.x + steps * (gridSize + padding) * (isNoisy ? -1 : 1);
+              let newX = lastImage.pos.x + steps * (lastImage.type ? -1 : 1);
 
-              // Calculate refactoredstep
-              let refactoredstep = steps * 80;
+              let color: p5.Color = direction === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+
+              console.log("new hori--------->");
+              console.log(`type: ${direction}`);
+              console.log(`color: ${color}`);
 
               // Add new image state
               newImage = {
                 pos: p.createVector(newX, lastImage.pos.y),
-                color: isNoisy ? p.color(255, 0, 0, 255) : p.color(0, 0, 255, 255), // Red for noise, Blue for denoise
+                color: color,
                 type: direction,
                 step: steps,
                 promptIndex: lastImage.promptIndex ?? 0, // Keep existing promptIndex or default to 0
                 _id: undefined,
                 parent_id: lastImage._id, // Link to the parent
                 alpha: 255,
-                isNoisy: isNoisy,
-                isVertical: false,
                 isAnimating: false,
                 currentY: lastImage.pos.y,
-                refactoredstep: refactoredstep,
               };
 
               staticPositions.push(newImage);
-
-              // Fade older images
-              for (let img of staticPositions) {
-                if (img !== newImage) {
-                  img.alpha = Math.max(100, img.alpha - 20);
-                }
-              }
-
-              // Create ImageDoc in the backend
-              const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
-              const type = newImage.isNoisy ? "noise" : "denoise";
-              const stepString = newImage.step.toString();
-              const refactoredStepString = newImage.refactoredstep.toString();
-
-              const createdImageDoc = await createImageDoc(lastImage._id || null, coordinate, type, stepString, newImage.promptIndex, refactoredStepString);
-
-              if (createdImageDoc) {
-                newImage._id = createdImageDoc._id;
-                newImage.parent_id = createdImageDoc.parent || lastImage._id;
-                selectedParentId = createdImageDoc._id || selectedParentId;
-              }
+              console.log("new hori");
             }
           }
         }
