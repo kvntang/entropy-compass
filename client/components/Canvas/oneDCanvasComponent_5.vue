@@ -299,10 +299,17 @@ onMounted(() => {
           }
 
           let squareColor;
-          squareColor =
-            sp.type === "noise"
-              ? p.color(255, 0, 0) // Red for noise
-              : p.color(0, 0, 255); // Blue for denoise
+
+          // RED BLUE BOX ------------------------------------------------------------------
+          if (sp._id == sp.parent_id) {
+            squareColor =
+              sp.type === "noise"
+                ? p.color(255, 0, 0) // Red for noise
+                : p.color(0, 0, 255); // Blue for denoise
+          } else {
+            squareColor = p.color(128, 0, 128);
+          }
+          // PURPLE BOX ------------------------------------------------------------------
 
           p.fill(squareColor);
 
@@ -323,7 +330,7 @@ onMounted(() => {
           p.text(`Parent: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
         }
 
-        // Draw drag preview
+        // Draw drag preview --------------------------------------------------------------
         if (isDragging) {
           // Adjust mouse coordinates for scaling and translation
           let mouseXWorld = (p.mouseX - translateX) / scaleFactor;
