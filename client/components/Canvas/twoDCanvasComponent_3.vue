@@ -144,8 +144,12 @@ onMounted(() => {
 
         ///1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
-        initialPosition = p.createVector(0, 0); // Start at (0, 0) in world coordinates
+        initialPosition = p.createVector(600, 40); // Start at (0, 0) in world coordinates
         camPos = initialPosition.copy(); // Center camera on initial position
+
+        // Initialize translateX and translateY for panning adjustments
+        translateX = -camPos.x; // Translate the camera horizontally
+        translateY = -camPos.y; // Translate the camera vertically
 
         // Create New
         if (props.images.length === 0) {
@@ -258,7 +262,7 @@ onMounted(() => {
             p.noStroke();
             p.fill(255); // Text color
             p.textAlign(p.CENTER, p.CENTER);
-            p.text(sp.promptIndex, midX, midY);
+            p.text(sp.step, midX, midY);
           }
         });
 
@@ -277,7 +281,8 @@ onMounted(() => {
           // Display objectID and type/prompt index above the square
           if (sp.promptIndex !== undefined && sp.promptIndex > 0) {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
-            p.text(`${sp.type === "noise" ? "Noised" : "Denoised"} P${sp.promptIndex}`, sp.pos.x, sp.pos.y - 20);
+            p.text(`${sp.type === "noise" ? "Noised" : "Denoised"}`, sp.pos.x, sp.pos.y - 20);
+            p.text(`${sp.promptIndex}`, sp.pos.x, sp.pos.y);
           } else {
             p.text(sp._id, sp.pos.x, sp.pos.y - 30); /* Display objectID */
             p.text(sp.type === "noise" ? "Noised" : "Denoised", sp.pos.x, sp.pos.y - 20);
