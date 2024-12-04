@@ -124,6 +124,7 @@ onMounted(() => {
       }
 
       //-------------------SETUP----------------------------------------------------------------------------
+      //Backup
       // p.setup = async () => {
       //   const canvasWidth = p.windowWidth - 40;
       //   const canvasHeight = p.windowHeight - 120;
@@ -175,6 +176,7 @@ onMounted(() => {
       //   // **Log the initial image's information**
       //   console.log("Static Positions:", staticPositions);
       // };
+
       p.setup = async () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
@@ -275,50 +277,50 @@ onMounted(() => {
         // Draw static positions
         p.textAlign(p.CENTER, p.CENTER);
         p.textSize(14 / scaleFactor);
-        for (let img of staticPositions) {
+
+        for (let sp of staticPositions) {
           // Handle elastic animation
-          if (img.isAnimating) {
-            let t = img.animationStartTime ? (p.millis() - img.animationStartTime) / (img.animationDuration || 1) : 0;
+          if (sp.isAnimating) {
+            let t = sp.animationStartTime ? (p.millis() - sp.animationStartTime) / (sp.animationDuration || 1) : 0;
             t = p.constrain(t, 0, 1);
             let easeT = easeOutElastic(t);
 
-            img.currentY = p.lerp(img.startY || img.pos.y, img.targetY || img.pos.y, easeT);
+            sp.currentY = p.lerp(sp.startY || sp.pos.y, sp.targetY || sp.pos.y, easeT);
 
             if (t >= 1) {
-              img.isAnimating = false;
-              if (img.targetY !== undefined) {
-                img.pos.y = img.targetY;
+              sp.isAnimating = false;
+              if (sp.targetY !== undefined) {
+                sp.pos.y = sp.targetY;
               }
-              img.currentY = img.targetY !== undefined ? img.targetY : img.currentY;
+              sp.currentY = sp.targetY !== undefined ? sp.targetY : sp.currentY;
             }
           } else {
-            img.currentY = img.pos.y;
+            sp.currentY = sp.pos.y;
           }
 
           let squareColor;
-          if (img.isVertical) {
-            squareColor = p.color(128, 0, 128); // Purple for vertical drags
-          } else {
-            squareColor =
-              img.type === "noise"
-                ? p.color(255, 0, 0) // Red for noise
-                : p.color(0, 0, 255); // Blue for denoise
-          }
+          squareColor =
+            sp.type === "noise"
+              ? p.color(255, 0, 0) // Red for noise
+              : p.color(0, 0, 255); // Blue for denoise
+
           p.fill(squareColor);
 
           // Highlight the last image with a yellow outline
-          if (img === staticPositions[staticPositions.length - 1]) {
+          if (sp === staticPositions[staticPositions.length - 1]) {
             p.stroke(255, 255, 0); // Yellow color
             p.strokeWeight(1 / scaleFactor);
           } else {
             p.noStroke(); // No stroke for other squares
           }
 
-          p.rect(img.pos.x, img.currentY, gridSize, gridSize);
+          p.rect(sp.pos.x, sp.currentY, gridSize, gridSize);
 
           // Display the prompt index on top of the image
           p.fill(255);
-          p.text(img.promptIndex, img.pos.x + gridSize / 2, img.currentY + gridSize / 2);
+          p.text(sp.promptIndex, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2);
+          p.text(`ID: ${sp._id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 30); // Object ID
+          p.text(`PID: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
         }
 
         // Draw drag preview
@@ -566,6 +568,7 @@ onMounted(() => {
               staticPositions.push(newImage);
 
               console.log("dragged horizontally!");
+              console.log(`Parent id is: ${lastImage._id}`);
             }
           }
         }
