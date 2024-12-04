@@ -55,7 +55,7 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
         promptedImage: "",
       },
     });
-    console.log(`ImageDoc created successfully! Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
+    console.log(`ImageDoc created successfully! ParentID: ${parentId}, Coordinate: ${coordinate}, Type: ${type}, Step: ${step}, Prompt Index: ${promptIndex}`);
     emit("refreshImages"); // Let the parent know to refresh the images
     console.log("refreshed");
     return response as ImageDoc; // Return the created ImageDoc
@@ -320,7 +320,7 @@ onMounted(() => {
           p.fill(255);
           p.text(sp.promptIndex, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2);
           p.text(`ID: ${sp._id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 30); // Object ID
-          p.text(`PID: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
+          p.text(`Parent: ${sp.parent_id || "N/A"}`, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2 - 15); // Object ID
         }
 
         // Draw drag preview
@@ -436,6 +436,8 @@ onMounted(() => {
         }
 
         if (isDragging) {
+          console.log(`isdragging Parent ID feeding in: ${selectedParentId}`);
+
           // Adjust mouse coordinates for scaling and translation
           let mouseXWorld = (p.mouseX - translateX) / scaleFactor;
           let mouseYWorld = (p.mouseY - translateY) / scaleFactor;
@@ -527,12 +529,13 @@ onMounted(() => {
             const stepString = newImage.step.toString();
             // const refactoredStepString = newImage.refactoredstep.toString();
 
-            const createdImageDoc = await createImageDoc(lastImage._id || null, coordinate, type, stepString, newImage.promptIndex);
+            console.log(`Parent ID feeding in: ${selectedParentId}`);
+            const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, type, stepString, newImage.promptIndex);
 
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
-              newImage.parent_id = createdImageDoc.parent || lastImage._id;
-              selectedParentId = createdImageDoc._id || selectedParentId;
+              // newImage.parent_id = createdImageDoc.parent || lastImage._id;
+              // selectedParentId = createdImageDoc._id || selectedParentId;
             }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
@@ -555,7 +558,7 @@ onMounted(() => {
                 type: direction,
                 step: steps,
                 promptIndex: lastImage.promptIndex ?? 0, // Keep existing promptIndex or default to 0
-                _id: undefined,
+                _id: lastImage._id,
                 parent_id: lastImage._id, // Link to the parent
                 // alpha: 255,
                 // isNoisy: isNoisy,
@@ -568,7 +571,8 @@ onMounted(() => {
               staticPositions.push(newImage);
 
               console.log("dragged horizontally!");
-              console.log(`Parent id is: ${lastImage._id}`);
+              selectedParentId = lastImage._id || "null";
+              console.log(`hih Parent ID is: ${selectedParentId}`);
             }
           }
         }
@@ -608,8 +612,10 @@ onMounted(() => {
             // Move the selected square to the end of the array
             const [selectedImage] = staticPositions.splice(i, 1);
             staticPositions.push(selectedImage);
+            selectedParentId = selectedImage._id || null;
 
             console.log(`Square selected:`, selectedImage);
+            console.log(`Select ID is: ${selectedParentId}`);
             break;
           }
         }
