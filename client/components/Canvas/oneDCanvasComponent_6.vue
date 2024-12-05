@@ -375,7 +375,6 @@ onMounted(() => {
           p.text(sp.promptIndex, sp.pos.x + gridSize / 2, sp.currentY + gridSize / 2);
         }
 
-        // Draw drag preview --------------------------------------------------------------
         if (isDragging) {
           // Adjust mouse coordinates for scaling and translation
           let mouseXWorld = (p.mouseX - translateX) / scaleFactor;
@@ -388,7 +387,7 @@ onMounted(() => {
 
           let lastImage = staticPositions[staticPositions.length - 1];
 
-          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && Math.abs(dragDistanceY) > gridSize / 2) {
+          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
             // Vertical dragging (editing prompt index)
             let lineX = lastImage.pos.x + gridSize / 2;
             let lineStartY = lastImage.pos.y + gridSize / 2;
@@ -398,11 +397,12 @@ onMounted(() => {
             p.strokeWeight(2 / scaleFactor);
             p.line(lineX, lineStartY, lineX, mouseYWorld);
 
-            // Always move down by one grid
-            let promptSteps = 1;
+            // Calculate prompt steps (number of grid units dragged)
+            let promptSteps = Math.floor((mouseYWorld - lineStartY) / (gridSize + padding));
+            promptSteps = Math.max(1, promptSteps); // Ensure at least one step
 
-            const newY = lastImage.pos.y + (gridSize + padding) * promptSteps;
-
+            // Calculate new Y position
+            let newY = lastImage.pos.y + (gridSize + padding) * promptSteps;
 
             // Draw drag preview as an outline rectangle
             p.noFill(); // Remove fill
@@ -441,6 +441,7 @@ onMounted(() => {
 
         p.pop();
       };
+
 
       // Mouse interaction functions
       p.mousePressed = (event: MouseEvent) => {
@@ -516,16 +517,17 @@ onMounted(() => {
             animationDuration?: number;
           };
 
-          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && Math.abs(dragDistanceY) > gridSize / 2) {
+          if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
+            //----------------------------------------------------------------------------------------------------
+            //----------------------------------------------------------------------------------------------------
             // Vertical dragging (editing prompt index)
             // Calculate prompt steps based on drag distance
             const rowHeight = gridSize + padding;
+            const newY = lastImage.pos.y + rowHeight;
 
             // Calculate prompt steps based on drag distance (for backend purposes only)
-            let promptSteps = Math.floor(Math.abs(mouseYWorld - (lastImage.pos.y + gridSize / 2)) / (gridSize + padding));
+            let promptSteps = Math.floor((mouseYWorld - (lastImage.pos.y + gridSize / 2)) / (gridSize + padding));
             promptSteps = Math.max(1, promptSteps);
-
-            const newY = lastImage.pos.y + (gridSize + padding) * promptSteps;
 
             staticPositions.forEach((img) => {
               if (img !== lastImage && img.pos.y >= newY) {
@@ -566,6 +568,8 @@ onMounted(() => {
               newImage._id = createdImageDoc._id;
             }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
+            //----------------------------------------------------------------------------------------------------
+            //----------------------------------------------------------------------------------------------------
             // Horizontal dragging (noise/denoise)
             let steps = Math.floor(Math.abs(dragDistanceX) / stepDistance);
 
