@@ -84,11 +84,11 @@ nav {
   width: 100%; /* Spans the full width of the page */
   z-index: 1000; /* Ensures it stays above other elements */
   padding: 1em 2em; /* Adds vertical and horizontal padding */
-  background-color: rgba(26, 26, 26, 0.8);
+  background-color: rgba(26, 26, 26, 0);
   display: flex;
   align-items: center;
   justify-content: space-between; /* Ensures proper spacing between title and nav links */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5); /* Optional: Add a shadow for better visibility */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0); /* Optional: Add a shadow for better visibility */
   box-sizing: border-box; /* Ensures padding doesn't affect width calculations */
 }
 
