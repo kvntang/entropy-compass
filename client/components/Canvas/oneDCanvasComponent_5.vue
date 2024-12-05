@@ -201,7 +201,7 @@ onMounted(() => {
 
       //-------------------DRAW----------------------------------------------------------------------------
       p.draw = () => {
-        p.background(20);
+        p.background(0);
 
         p.push();
         p.scale(scaleFactor);
@@ -660,7 +660,7 @@ onMounted(() => {
   align-items: center;
   margin: 20px;
   padding: 20px;
-  background: #2e2e2e;
+  background: #000000;
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
   overflow: hidden;

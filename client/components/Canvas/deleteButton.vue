@@ -59,6 +59,7 @@ const deleteAllImages = async () => {
   align-items: center;
   gap: 1rem;
   margin: 1.5rem 0;
+  height: 50px;
 }
 
 .delete-button {

@@ -52,16 +52,14 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
 
 <template>
   <main>
-    <h1>Welcome to Home Page</h1>
-    <h1>A new way to explore stable diffusion!</h1>
-    <section>
-      <h1 v-if="isLoggedIn">Welcome {{ currentUsername }}!</h1>
-      <h1 v-else>Please login!</h1>
-    </section>
-    <!-- Conditionally render the canvas components and message -->
-    <section v-if="isLoggedIn">
-      <h2>{{ canvasMessage }}</h2>
+    <!-- Fixed Floating Panel -->
+    <div class="header-row">
+      <h2 class="canvas-message">{{ canvasMessage }}</h2>
       <deleteButton @refreshImages="refreshImages" />
+    </div>
+
+    <!-- Canvas Components -->
+    <section v-if="isLoggedIn">
       <section v-if="loading">Loading images...</section>
       <section v-else-if="error">{{ error }}</section>
       <template v-else>
@@ -78,7 +76,7 @@ body {
   font-family: "Arial", sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #1a1a1a;
+  background-color: #000000;
   color: white;
 }
 
@@ -92,22 +90,45 @@ main {
   align-items: center;
   justify-content: flex-start;
   min-height: 100vh;
-  background-color: #1a1a1a;
+  background-color: #000000;
   color: white;
   padding: 20px;
 }
 section {
-  width: 90%;
+  width: 100%;
   max-width: 1200px;
-  margin: 20px 0;
-  padding: 20px;
+  margin: 10px 0;
+  padding: 10px;
   border-radius: 10px;
-  background: #2b2b2b;
+  background: #000000;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* center the 1d canvas/2d canvas text */
-h2 {
-  text-align: center;
+/* Center the 1D/2D canvas text and arrange header */
+.header-row {
+  position: fixed; /* Keeps it fixed in place */
+  top: 100px; /* Adjust distance from the top of the viewport */
+  right: 10px; /* Adjust distance from the left of the viewport */
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: flex-start; /* Align elements to the start of the container */
+  padding: 10px;
+  background: rgba(26, 26, 26, 0.8); /* Semi-transparent background */
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5); /* Optional shadow for visibility */
+  z-index: 1000; /* Places it above the canvas and other elements */
+  width: auto; /* Width adjusts to the widest element */
+}
+
+.canvas-message {
+  margin: 0 0 10px 0; /* Add spacing between stacked elements */
+}
+
+body {
+  font-family: "Arial", sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
+  color: white;
 }
 </style>

@@ -268,7 +268,7 @@ onMounted(() => {
 
       //-------------------DRAW----------------------------------------------------------------------------
       p.draw = () => {
-        p.background(10);
+        p.background(0);
 
         p.push();
         // Apply camera transformations
@@ -660,9 +660,9 @@ onMounted(() => {
   align-items: center;
   margin: 20px;
   padding: 20px;
-  background: #2e2e2e;
+  background: #000000;
   border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0px 4px 10px rgb(0, 0, 0);
   overflow: hidden;
 }
 

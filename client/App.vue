@@ -8,7 +8,7 @@ import { RouterLink, RouterView, useRoute } from "vue-router";
 const currentRoute = useRoute();
 const currentRouteName = computed(() => currentRoute.name);
 const userStore = useUserStore();
-const { isLoggedIn } = storeToRefs(userStore);
+const { currentUsername, isLoggedIn } = storeToRefs(userStore);
 const { toast } = storeToRefs(useToastStore());
 
 // Make sure to update the session before mounting the app in case the user is already logged in
@@ -38,6 +38,10 @@ function toggleCanvas() {
         </RouterLink>
       </div>
       <ul>
+        <li>
+          <h1 v-if="isLoggedIn">Welcome {{ currentUsername }}!</h1>
+          <h1 v-else>Please login!</h1>
+        </li>
         <li>
           <RouterLink :to="{ name: 'Home' }" :class="{ underline: currentRouteName == 'Home' }"> Home </RouterLink>
         </li>
@@ -69,20 +73,30 @@ body {
   font-family: "Arial", sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #1a1a1a;
+  background-color: #000000;
   color: white;
 }
 
 nav {
-  padding: 1em 2em;
-  background-color: #2b2b2b;
+  position: fixed; /* Makes the navbar fixed */
+  top: 0; /* Ensures it stays at the very top */
+  left: 0;
+  width: 100%; /* Spans the full width of the page */
+  z-index: 1000; /* Ensures it stays above other elements */
+  padding: 1em 2em; /* Adds vertical and horizontal padding */
+  background-color: rgba(26, 26, 26, 0.8);
   display: flex;
   align-items: center;
+  justify-content: space-between; /* Ensures proper spacing between title and nav links */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5); /* Optional: Add a shadow for better visibility */
+  box-sizing: border-box; /* Ensures padding doesn't affect width calculations */
 }
 
 h1 {
-  font-size: 2em;
+  font-family: "Arial", sans-serif;
+  font-size: 1em;
   margin: 0;
+  color: white;
 }
 
 .title {
