@@ -1,25 +1,28 @@
+<!-- works -->
 <script setup lang="ts">
+import { generateWordList } from "@/utils/chatgptService";
+import { generateCaption } from "@/utils/huggingFaceService";
 import { ref } from "vue";
-import { fetchy } from "../../utils/fetchy";
 
 interface ImageDoc {
   author: string;
-  parent: string; // Parent ImageDoc ID
-  coordinate: string; // stored as x, y
+  parent: string;
+  coordinate: string;
   prompt: string;
   type: string;
   step: string;
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
+  caption: string;
+  wordList: string[];
   _id: string;
 }
 
-// Form input fields
 const photo = ref<File | null>(null);
 const emit = defineEmits(["refreshImages"]);
 
-// Helper function to convert file to base64
+// Convert file to base64
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -31,67 +34,68 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 const createImageDoc = async (): Promise<ImageDoc | null> => {
   try {
-    let base64Photo = null;
+    if (!photo.value) return null;
 
-    // Convert the photo to base64 if it exists
-    if (photo.value) {
-      try {
-        base64Photo = await fileToBase64(photo.value);
-      } catch (error) {
-        console.error("Error converting image to base64:", error);
-      }
-    }
+    // Convert image to Base64
+    const base64Photo = await fileToBase64(photo.value);
+    console.log("Payload sent to backend:", {
+      originalImage: base64Photo,
+    }); 
 
-    //Create Initial ImageDoc
-    const response = await fetchy("/api/images", "POST", {
-      body: {
-        author: "mocked-author-id", // Mocked user
-        parent: "", // Parent ID is empty for the root node
+    // Generate caption
+    const caption = await generateCaption(base64Photo);
+    console.log("Generated caption:", caption);
+
+    // Generate word list using ChatGPT
+    const wordList = await generateWordList(caption);
+    console.log("Generated word list:", wordList);
+
+    // Send to backend
+    const response = await fetch("/api/images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        author: "mocked-author-id",
+        parent: "",
         coordinate: "50,50",
-        type: "denosie",
+        type: "denoise",
         step: "0",
         prompt: "0",
-        originalImage: base64Photo, //save photo string here!
+        originalImage: base64Photo,
         steppedImage: "",
         promptedImage: "",
-      },
+        caption,
+        wordList,
+      }),
     });
-    console.log(`Initial ImageDoc created successfully!`);
-    emit("refreshImages"); // Let the parent know to refresh the images
 
-    // Reset the form
-    emptyForm();
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-    return response as ImageDoc; // Return the created ImageDoc
+    const data = await response.json();
+    emit("refreshImages");
+    photo.value = null;
+
+    return data as ImageDoc;
   } catch (error) {
     console.error("Error creating ImageDoc:", error);
     return null;
   }
 };
 
-// Function to reset the form fields
-const emptyForm = () => {
-  photo.value = null;
-};
-
-// Function to handle file change safely
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
-  if (target && target.files && target.files.length > 0) {
-    photo.value = target.files[0]; // Assign the new file
-  } else {
-    photo.value = null; // Reset if no file is selected
-  }
+  photo.value = target.files?.[0] ?? null;
 };
 </script>
 
 <template>
   <form @submit.prevent="createImageDoc">
-    <!-- Input for the image -->
     <input id="photo" type="file" accept="image/*" @change="handleFileChange" />
-
-    <!-- Submit button is disabled if no photo is selected -->
-    <button type="submit" class="pure-button-primary pure-button" :disabled="!photo">Upload</button>
+    <button type="submit" class="pure-button-primary pure-button" :disabled="!photo">
+      Upload
+    </button>
   </form>
 </template>
 
@@ -103,9 +107,9 @@ form {
   flex-direction: column;
   gap: 0.5em;
   padding: 1em;
-  width: 90%; /* Set a responsive width */
-  max-width: 40em; /* Ensure it doesn’t grow too large on wide screens */
-  margin: 1em auto; /* Center the article and add spacing between articles */
+  width: 90%;
+  max-width: 40em;
+  margin: 1em auto;
 }
 
 textarea {
@@ -118,8 +122,8 @@ textarea {
 }
 
 button:disabled {
-  background-color: #000000; /* Gray background */
-  cursor: not-allowed; /* Indicate it's not clickable */
-  opacity: 0.2; /* Slightly transparent */
+  background-color: #000000;
+  cursor: not-allowed;
+  opacity: 0.2;
 }
 </style>

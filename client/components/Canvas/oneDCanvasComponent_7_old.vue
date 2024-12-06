@@ -18,10 +18,7 @@ interface ImageDoc {
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
-  caption: string;
-  wordList: string[];
   _id?: string; // Optional, assigned after creation
-  p5Image?: p5.Image; // store preloaded p5.Image
 }
 
 // from parent code
@@ -65,9 +62,6 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
 //--------------------------------------------------------------------------------------------------------------
 
 onMounted(() => {
-  if (!props.images || props.images.length === 0) {
-    console.error("No images received for rendering.");
-  }
   // Disable default scroll behavior
   const preventScroll = (e: Event) => e.preventDefault();
   window.addEventListener("wheel", preventScroll, { passive: false });
@@ -82,7 +76,6 @@ onMounted(() => {
         step: number;
         promptIndex?: number;
         _id?: string;
-        originalImage: string;
         parent_id?: string;
         isAnimating: boolean;
         currentY: number;
@@ -90,7 +83,6 @@ onMounted(() => {
         targetY?: number;
         animationStartTime?: number;
         animationDuration?: number;
-        p5Image?: p5.Image;
       }[] = [];
 
       let isDragging = false;
@@ -101,10 +93,10 @@ onMounted(() => {
       let panStartY = 0;
       let panStartTranslateX = 0;
       let panStartTranslateY = 0;
-      const gridSize = 70;
+      const gridSize = 40;
       const padding = 0;
-      const stepDistance = 60;
-      let rowOccupancy: { [key: number]: number } = {}; // Track squares in each row
+      const stepDistance = 35;
+      let rowOccupancy: { [key: number]: number } = {};  // Track squares in each row
       let baseRowHeight = gridSize + padding;
 
       // Zoom and pan
@@ -117,6 +109,16 @@ onMounted(() => {
       let initialPosition: p5.Vector;
       let selectedParentId: string | null = null; // To track the parent for new ImageDocs
       let selectedType: string;
+
+      /**
+       * Calculate the initial position based on canvas width
+       */
+      function calculateInitialPosition(canvasWidth: number) {
+        // Position the initial square at the center-top of the canvas, aligned to grid
+        const initialX = 0;
+        const initialY = 0;
+        return p.createVector(initialX, initialY);
+      }
 
       async function shiftPurplesDown(newY: number) {
         for (let img of staticPositions) {
@@ -148,30 +150,41 @@ onMounted(() => {
         translateX = canvasWidth / 2; // Start at 0 on X-axis
         translateY = 0; // Start at 0 on Y-axis
 
-        // Preload images for each ImageDoc
-        for (let imgDoc of props.images) {
-          if (imgDoc.originalImage) {
-            await new Promise<void>((resolve) => {
-              const img = p.loadImage(imgDoc.originalImage, () => {
-                imgDoc.p5Image = img;
-                resolve(); // Ensure the image is fully loaded before proceeding
-              }, () => {
-                console.error("Failed to load image:", imgDoc.originalImage);
-                resolve(); // Resolve even if image loading fails
-              });
-            });
-          }
-        }
-
-        console.log("All images preloaded:", props.images);
-
         //1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
-        initialPosition = p.createVector(0, 0);
+        initialPosition = calculateInitialPosition(canvasWidth);
 
         // Create New
         if (props.images.length === 0) {
-          console.log("waiting for user to upload an image");
+          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
+
+          try {
+            // Create the initial ImageDoc
+            const createdImageDoc = await createImageDoc(
+              "", // Parent ID is empty for the root node
+              coordinate,
+              "denoise", // Initial type is "denoise"
+              "0", // Step is 0 for the root node
+              0, // Prompt index is 0 for the root node
+            );
+
+            if (createdImageDoc) {
+              // Push it to staticPositions with blue color (denoise)
+              staticPositions.push({
+                pos: initialPosition.copy(),
+                color: p.color(0, 0, 255), // Blue for denoise
+                type: "denoise",
+                step: 0,
+                promptIndex: 0,
+                _id: createdImageDoc._id, //Use the response ID from the API
+                parent_id: undefined, // No parent for the initial node
+                isAnimating: false,
+                currentY: initialPosition.y,
+              });
+            }
+          } catch (error) {
+            console.error("Error creating initial ImageDoc:", error);
+          }
         } else {
           // 2. Load database initial static positions from props
 
@@ -189,13 +202,15 @@ onMounted(() => {
 
           // Function to set positions recursively ----------------------------------------------------
           function setPosition(image: ImageDoc, parentPosition: p5.Vector | null) {
-            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : image.type === "denoise" ? p.color(0, 0, 255) : p.color(128, 0, 128);
+            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) :
+                                  image.type === "denoise" ? p.color(0, 0, 255) :
+                                  p.color(128, 0, 128); 
 
             let posX: number;
             let posY: number;
 
             if (parentPosition) {
-              // Preserve original type's direction
+              // Preserve original type's direction 
               posX = parentPosition.x + (image.type === "noise" ? -1 : 1) * Number(image.step) * (gridSize + padding);
               posY = parentPosition.y + gridSize + padding;
               // console.log(`Image type: ${image.type}, Step: ${image.step}, posX: ${posX}, posY: ${posY}`);
@@ -211,9 +226,6 @@ onMounted(() => {
               shiftPurplesDown(pos.y);
             }
 
-            // assign preloaded p5 image
-            const preloadedImage = image.p5Image;
-
             staticPositions.push({
               pos: pos,
               color,
@@ -224,8 +236,6 @@ onMounted(() => {
               parent_id: image.parent,
               isAnimating: false,
               currentY: pos.y,
-              originalImage: image.originalImage,
-              p5Image: preloadedImage,
             });
 
             // Recursively set positions for children
@@ -244,7 +254,7 @@ onMounted(() => {
       };
 
       //-------------------DRAW----------------------------------------------------------------------------
-      p.draw = async () => {
+      p.draw = () => {
         p.background(0);
 
         p.push();
@@ -371,13 +381,8 @@ onMounted(() => {
             p.noStroke(); // No stroke for other squares
           }
 
-          //Draw Main Box/image here!!!
-          p.rect(sp.pos.x, sp.currentY, gridSize, gridSize); //purple box
-
-          // Draw the preloaded image
-          if (sp.p5Image) {
-            p.image(sp.p5Image, sp.pos.x, sp.currentY, gridSize, gridSize);
-          }
+          //Draw Main Box
+          p.rect(sp.pos.x, sp.currentY, gridSize, gridSize);
 
           // Display the prompt index on top of the image
           p.fill(255);
@@ -451,6 +456,7 @@ onMounted(() => {
         p.pop();
       };
 
+
       // Mouse interaction functions
       p.mousePressed = (event: MouseEvent) => {
         // Only start interactions if the mouse is within the canvas
@@ -519,12 +525,10 @@ onMounted(() => {
             parent_id?: string;
             isAnimating: boolean;
             currentY: number;
-            originalImage: string;
             startY?: number;
             targetY?: number;
             animationStartTime?: number;
             animationDuration?: number;
-            p5Image?: p5.Image;
           };
 
           if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
@@ -541,12 +545,11 @@ onMounted(() => {
             // Create new purple square
             newImage = {
               pos: p.createVector(lastImage.pos.x, newY),
-              color: lastImage.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255),
+              color: lastImage.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255), 
               type: lastImage.type,
               step: lastImage.step,
               promptIndex: validPromptSteps,
-              originalImage: lastImage.originalImage, // Use the original image from the last image
-              _id: undefined, // Will be set after backend response
+              _id: undefined,
               parent_id: lastImage._id,
               isAnimating: true,
               currentY: lastImage.pos.y,
@@ -562,20 +565,17 @@ onMounted(() => {
             const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
             const stepString = newImage.step.toString();
 
-            const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, lastImage.type, stepString, newImage.promptIndex);
+            const createdImageDoc = await createImageDoc(
+              lastImage._id || "null",
+              coordinate,
+              lastImage.type,
+              stepString,
+              newImage.promptIndex
+            );
 
-            // if (createdImageDoc) {
-            //   newImage._id = createdImageDoc._id;
-            //   newImage.p5Image = p.loadImage(createdImageDoc.originalImage);
-            // }
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
-              newImage.color = p.color(128, 0, 128); // Purple for new ImageDoc consistency
-              newImage.type = createdImageDoc.type; // Use type from the backend
-          } else {
-              console.warn("Failed to create new ImageDoc. Skipping addition to staticPositions.");
-              staticPositions.pop(); // Remove the new image if creation fails
-          }
+            }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
             //----------------------------------------------------------------------------------------------------
@@ -598,7 +598,6 @@ onMounted(() => {
                 parent_id: lastImage._id, // Link to the parent
                 isAnimating: false,
                 currentY: lastImage.pos.y,
-                originalImage: lastImage.originalImage, // Add originalImage property
               };
 
               staticPositions.push(newImage);
@@ -660,7 +659,7 @@ onMounted(() => {
         p.resizeCanvas(canvasWidth, canvasHeight);
 
         // Recalculate and update the initial square position
-        const newInitialPosition = p.createVector(0, 0);
+        const newInitialPosition = calculateInitialPosition(canvasWidth);
 
         if (staticPositions.length > 0) {
           staticPositions[0].pos.set(newInitialPosition.x, newInitialPosition.y);
