@@ -74,8 +74,5 @@
     "trailingComma": "all",
     "printWidth": 200,
     "endOfLine": "auto"
-  },
-  "engines": {
-    "node": "22.x"
   }
 }
