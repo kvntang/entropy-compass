@@ -80,7 +80,8 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
     </div>
 
     <div class="upload-panel">
-      <uploadButton />
+      <h2>Upload an image to start!</h2>
+      <uploadButton @refreshImages="refreshImages" />
     </div>
 
     <!-- Show Canvas only if an image has been uploaded.  -->
@@ -167,7 +168,7 @@ section {
 
 .upload-panel {
   position: fixed; /* Keeps it fixed in place */
-  top: 50%; /* Position the panel in the middle vertically */
+  top: 80%; /* Position the panel in the middle vertically */
   left: 50%; /* Position the panel in the middle horizontally */
   transform: translate(-50%, -50%); /* Center the panel exactly */
   display: flex;

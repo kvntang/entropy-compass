@@ -152,36 +152,7 @@ onMounted(() => {
 
         // Create New
         if (props.images.length === 0) {
-          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
-          try {
-            // Create the initial ImageDoc
-            const createdImageDoc = await createImageDoc(
-              "", // Parent ID is empty for the root node
-              coordinate,
-              "denoise", // Initial type is "denoise"
-              "0", // Step is 0 for the root node
-              0, // Prompt index is 0 for the root node
-            );
-
-            if (createdImageDoc) {
-              // Push it to staticPositions with blue color (denoise)
-              staticPositions.push({
-                pos: initialPosition.copy(),
-                color: p.color(0, 0, 255), // Blue color for "denoise"
-                type: "denoise",
-                step: 0,
-                promptIndex: 0,
-                _id: createdImageDoc._id, // Use the response ID from the API
-                parent_id: undefined, // No parent for the initial node
-              });
-
-              // Set the initial parent to the created ImageDoc
-              selectedParentId = createdImageDoc._id;
-              console.log("Initial ImageDoc created and added to static positions.", `Parent ID set to: ${selectedParentId}`);
-            }
-          } catch (error) {
-            console.error("Error creating initial ImageDoc:", error);
-          }
+          console.log("waiting for user to upload an image");
         } else {
           // 2. Load database initial static positions from props
 

@@ -110,16 +110,6 @@ onMounted(() => {
       let selectedParentId: string | null = null; // To track the parent for new ImageDocs
       let selectedType: string;
 
-      /**
-       * Calculate the initial position based on canvas width
-       */
-      function calculateInitialPosition(canvasWidth: number) {
-        // Position the initial square at the center-top of the canvas, aligned to grid
-        const initialX = 0;
-        const initialY = 0;
-        return p.createVector(initialX, initialY);
-      }
-
       async function shiftPurplesDown(newY: number) {
         for (let img of staticPositions) {
           if (img.type === "noise" || img.type === "denoise") {
@@ -152,39 +142,11 @@ onMounted(() => {
 
         //1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
-        initialPosition = calculateInitialPosition(canvasWidth);
+        initialPosition = p.createVector(0, 0);
 
         // Create New
         if (props.images.length === 0) {
-          const coordinate = `${Math.round(initialPosition.x)},${Math.round(initialPosition.y)}`;
-
-          try {
-            // Create the initial ImageDoc
-            const createdImageDoc = await createImageDoc(
-              "", // Parent ID is empty for the root node
-              coordinate,
-              "denoise", // Initial type is "denoise"
-              "0", // Step is 0 for the root node
-              0, // Prompt index is 0 for the root node
-            );
-
-            if (createdImageDoc) {
-              // Push it to staticPositions with blue color (denoise)
-              staticPositions.push({
-                pos: initialPosition.copy(),
-                color: p.color(0, 0, 255), // Blue for denoise
-                type: "denoise",
-                step: 0,
-                promptIndex: 0,
-                _id: createdImageDoc._id, //Use the response ID from the API
-                parent_id: undefined, // No parent for the initial node
-                isAnimating: false,
-                currentY: initialPosition.y,
-              });
-            }
-          } catch (error) {
-            console.error("Error creating initial ImageDoc:", error);
-          }
+          console.log("waiting for user to upload an image");
         } else {
           // 2. Load database initial static positions from props
 
@@ -650,7 +612,7 @@ onMounted(() => {
         p.resizeCanvas(canvasWidth, canvasHeight);
 
         // Recalculate and update the initial square position
-        const newInitialPosition = calculateInitialPosition(canvasWidth);
+        const newInitialPosition = p.createVector(0, 0);
 
         if (staticPositions.length > 0) {
           staticPositions[0].pos.set(newInitialPosition.x, newInitialPosition.y);

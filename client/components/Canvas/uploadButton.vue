@@ -1,10 +1,23 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { fetchy } from "../../utils/fetchy";
+
+interface ImageDoc {
+  author: string;
+  parent: string; // Parent ImageDoc ID
+  coordinate: string; // stored as x, y
+  prompt: string;
+  type: string;
+  step: string;
+  originalImage: string;
+  steppedImage: string;
+  promptedImage: string;
+  _id: string;
+}
 
 // Form input fields
-const content = ref("");
 const photo = ref<File | null>(null);
-const emit = defineEmits(["refreshPosts"]);
+const emit = defineEmits(["refreshImages"]);
 
 // Helper function to convert file to base64
 const fileToBase64 = (file: File): Promise<string> => {
@@ -16,41 +29,44 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-//Shoudl also have a prop to pass to HOMEVIEW
-// SO That homeview can trigger a refreshimage check.
+const createImageDoc = async (): Promise<ImageDoc | null> => {
+  try {
+    let base64Photo = null;
 
-// Function to create a post with content and an optional image
-//THIS SHOULD BE CHANGED TO CreateNEW IMAGEDOC!!!!!!!!!!!!!!!!///////////////////////////
-const createPost = async () => {
-  let base64Photo = null;
-
-  // Convert the photo to base64 if it exists
-  if (photo.value) {
-    try {
-      base64Photo = await fileToBase64(photo.value);
-    } catch (error) {
-      console.error("Error converting image to base64:", error);
-      return;
+    // Convert the photo to base64 if it exists
+    if (photo.value) {
+      try {
+        base64Photo = await fileToBase64(photo.value);
+      } catch (error) {
+        console.error("Error converting image to base64:", error);
+      }
     }
+
+    //Create Initial ImageDoc
+    const response = await fetchy("/api/images", "POST", {
+      body: {
+        author: "mocked-author-id", // Mocked user
+        parent: "", // Parent ID is empty for the root node
+        coordinate: "50,50",
+        type: "denosie",
+        step: "0",
+        prompt: "0",
+        originalImage: base64Photo, //save photo string here!
+        steppedImage: "",
+        promptedImage: "",
+      },
+    });
+    console.log(`Initial ImageDoc created successfully! Photo string is: ${base64Photo}`);
+    emit("refreshImages"); // Let the parent know to refresh the images
+
+    // Reset the form
+    emptyForm();
+
+    return response as ImageDoc; // Return the created ImageDoc
+  } catch (error) {
+    console.error("Error creating ImageDoc:", error);
+    return null;
   }
-
-  // Send post data including the base64 image (if any)
-  //   try {
-  //     await fetchy("/api/posts", "POST", {
-  //       body: { content: content.value, photo: base64Photo }, // Add photo to the post data
-  //     });
-  //   } catch (error) {
-  //     console.error("Error creating post:", error);
-  //     return;
-  //   }
-
-  // Emit event to refresh posts after submission
-  emit("refreshPosts");
-
-  console.log(`Picture is here: ${base64Photo}`);
-
-  // Reset the form
-  emptyForm();
 };
 
 // Function to reset the form fields
@@ -70,17 +86,18 @@ const handleFileChange = (event: Event) => {
 </script>
 
 <template>
-  <form @submit.prevent="createPost">
-    <!-- <label for="photo">Upload Image:</label> -->
+  <form @submit.prevent="createImageDoc">
+    <!-- Input for the image -->
     <input id="photo" type="file" accept="image/*" @change="handleFileChange" />
 
-    <button type="submit" class="pure-button-primary pure-button">Upload</button>
+    <!-- Submit button is disabled if no photo is selected -->
+    <button type="submit" class="pure-button-primary pure-button" :disabled="!photo">Upload</button>
   </form>
 </template>
 
 <style scoped>
 form {
-  background-color: #1c1c1c;
+  background-color: #3fa14c68;
   border-radius: 1em;
   display: flex;
   flex-direction: column;
@@ -98,5 +115,11 @@ textarea {
   padding: 0.5em;
   border-radius: 4px;
   resize: none;
+}
+
+button:disabled {
+  background-color: #000000; /* Gray background */
+  cursor: not-allowed; /* Indicate it's not clickable */
+  opacity: 0.2; /* Slightly transparent */
 }
 </style>
