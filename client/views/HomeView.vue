@@ -46,6 +46,10 @@ function refreshImages() {
   });
 }
 
+function deleteAll() {
+  refreshImages();
+}
+
 // Dynamic message based on the canvas type
 const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canvas"));
 </script>
@@ -55,7 +59,7 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
     <!-- Fixed Floating Panel -->
     <div class="header-row">
       <h2 class="canvas-message">{{ canvasMessage }}</h2>
-      <deleteButton @refreshImages="refreshImages" />
+      <deleteButton @deleteAll="deleteAll" />
     </div>
 
     <div class="header-row2">

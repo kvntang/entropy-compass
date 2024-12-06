@@ -4,7 +4,7 @@ import { storeToRefs } from "pinia";
 import { ref } from "vue";
 import { fetchy } from "../../utils/fetchy";
 
-const emit = defineEmits(["refreshImages"]);
+const emit = defineEmits(["deleteAll"]);
 
 const isLoading = ref(false);
 const errorMessage = ref<string | null>(null);
@@ -25,7 +25,7 @@ const deleteAllImages = async () => {
   try {
     await fetchy(`/api/images/author/${currentUserID.value}`, "DELETE");
     successMessage.value = "All images have been successfully deleted.";
-    emit("refreshImages");
+    emit("deleteAll");
   } catch (error) {
     console.error("Error deleting images:", error);
     errorMessage.value = "Failed to delete images. Please try again.";
