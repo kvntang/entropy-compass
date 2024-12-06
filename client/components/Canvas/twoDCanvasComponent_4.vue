@@ -186,49 +186,49 @@ onMounted(() => {
           // 2. Load database initial static positions from props
 
           props.images.forEach((image) => {
-  let parentPos = new p.createVector(0, 0);
-  let parentAngle = 0;
-  
-  if (image.parent) {
-    const parent = staticPositions.find(sp => sp._id === image.parent);
-    if (parent) {
-      parentPos = parent.pos.copy();
-      parentAngle = Math.atan2(-(parent.pos.y - parentPos.y), -(parent.pos.x - parentPos.x));
-      parentAngle = p.degrees(parentAngle);
-      if (parentAngle < 0) parentAngle += 360;
-    }
-  }
+            let parentPos = new p.createVector(0, 0);
+            let parentAngle = 0;
 
-  let snappedAngleDegrees = 0;
-  if (image.type === "noise") {
-    if (image.prompt === "0") snappedAngleDegrees = 0;
-    else if (parseInt(image.prompt) % 2 === 1) snappedAngleDegrees = ((parseInt(image.prompt) + 1) / 2) * 10;
-    else snappedAngleDegrees = 360 - (parseInt(image.prompt) / 2) * 10;
-  } else {
-    if (image.prompt === "0") snappedAngleDegrees = 180;
-    else if (parseInt(image.prompt) % 2 === 1) snappedAngleDegrees = 180 - ((parseInt(image.prompt) + 1) / 2) * 10;
-    else snappedAngleDegrees = 180 + (parseInt(image.prompt) / 2) * 10;
-  }
+            if (image.parent) {
+              const parent = staticPositions.find((sp) => sp._id === image.parent);
+              if (parent) {
+                parentPos = parent.pos.copy();
+                parentAngle = Math.atan2(-(parent.pos.y - parentPos.y), -(parent.pos.x - parentPos.x));
+                parentAngle = p.degrees(parentAngle);
+                if (parentAngle < 0) parentAngle += 360;
+              }
+            }
 
-  snappedAngleDegrees = (snappedAngleDegrees + parentAngle) % 360;
-  
-  const step = parseFloat(image.step) * stepFactor;
-  const angleRadians = p.radians(snappedAngleDegrees);
-  const x = parentPos.x + step * Math.cos(angleRadians);
-  const y = parentPos.y + step * Math.sin(angleRadians);
+            let snappedAngleDegrees = 0;
+            if (image.type === "noise") {
+              if (image.prompt === "0") snappedAngleDegrees = 0;
+              else if (parseInt(image.prompt) % 2 === 1) snappedAngleDegrees = ((parseInt(image.prompt) + 1) / 2) * 10;
+              else snappedAngleDegrees = 360 - (parseInt(image.prompt) / 2) * 10;
+            } else {
+              if (image.prompt === "0") snappedAngleDegrees = 180;
+              else if (parseInt(image.prompt) % 2 === 1) snappedAngleDegrees = 180 - ((parseInt(image.prompt) + 1) / 2) * 10;
+              else snappedAngleDegrees = 180 + (parseInt(image.prompt) / 2) * 10;
+            }
 
-  let color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+            snappedAngleDegrees = (snappedAngleDegrees + parentAngle) % 360;
 
-  staticPositions.push({
-    pos: p.createVector(x, y),
-    color,
-    type: image.type,
-    step: step,
-    promptIndex: parseInt(image.prompt),
-    _id: image._id,
-    parent_id: image.parent,
-  });
-});
+            const step = parseFloat(image.step) * stepFactor;
+            const angleRadians = p.radians(snappedAngleDegrees);
+            const x = parentPos.x + step * Math.cos(angleRadians);
+            const y = parentPos.y + step * Math.sin(angleRadians);
+
+            let color = image.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255);
+
+            staticPositions.push({
+              pos: p.createVector(x, y),
+              color,
+              type: image.type,
+              step: step,
+              promptIndex: parseInt(image.prompt),
+              _id: image._id,
+              parent_id: image.parent,
+            });
+          });
 
           // Automatically select the last image as the parent
           if (props.images.length > 0) {
@@ -610,7 +610,7 @@ onMounted(() => {
       };
 
       p.keyPressed = () => {
-        if (p.key === 'Escape' && isDraggingNew) {
+        if (p.key === "Escape" && isDraggingNew) {
           isDraggingNew = false;
           initialDragDirection = null;
           point.isMoving = false;

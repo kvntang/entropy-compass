@@ -58,6 +58,17 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
       <deleteButton @refreshImages="refreshImages" />
     </div>
 
+    <div class="header-row2">
+      <h2>User Tips</h2>
+      <body>
+        - hold "shift" and drag to navigate the canvas
+        <br />
+        - double click to select a box
+        <br />
+        - press "esc" to exist dragging mode
+      </body>
+    </div>
+
     <!-- Canvas Components -->
     <section v-if="isLoggedIn">
       <section v-if="loading">Loading images...</section>
@@ -72,13 +83,13 @@ const canvasMessage = computed(() => (props.is1DCanvas ? "1D Canvas" : "2D Canva
 
 <style scoped>
 /* change global font */
-body {
+/* body {
   font-family: "Arial", sans-serif;
   margin: 0;
   padding: 0;
   background-color: #000000;
   color: white;
-}
+} */
 
 h1 {
   text-align: center;
@@ -120,12 +131,29 @@ section {
   width: auto; /* Width adjusts to the widest element */
 }
 
+/* Center the 1D/2D canvas text and arrange header */
+.header-row2 {
+  position: fixed; /* Keeps it fixed in place */
+  top: 300px; /* Adjust distance from the top of the viewport */
+  right: 10px; /* Adjust distance from the left of the viewport */
+  display: flex;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: flex-start; /* Align elements to the start of the container */
+  padding: 10px;
+  background: rgba(26, 26, 26, 0.8); /* Semi-transparent background */
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5); /* Optional shadow for visibility */
+  z-index: 1000; /* Places it above the canvas and other elements */
+  width: auto; /* Width adjusts to the widest element */
+}
+
 .canvas-message {
   margin: 0 0 10px 0; /* Add spacing between stacked elements */
 }
 
 body {
   font-family: "Arial", sans-serif;
+  font-size: large;
   margin: 0;
   padding: 0;
   background-color: #000000;

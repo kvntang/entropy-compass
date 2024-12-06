@@ -96,7 +96,7 @@ onMounted(() => {
       const gridSize = 40;
       const padding = 0;
       const stepDistance = 35;
-      let rowOccupancy: { [key: number]: number } = {};  // Track squares in each row
+      let rowOccupancy: { [key: number]: number } = {}; // Track squares in each row
       let baseRowHeight = gridSize + padding;
 
       // Zoom and pan
@@ -202,15 +202,13 @@ onMounted(() => {
 
           // Function to set positions recursively ----------------------------------------------------
           function setPosition(image: ImageDoc, parentPosition: p5.Vector | null) {
-            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) :
-                                  image.type === "denoise" ? p.color(0, 0, 255) :
-                                  p.color(128, 0, 128); 
+            let color: p5.Color = image.type === "noise" ? p.color(255, 0, 0) : image.type === "denoise" ? p.color(0, 0, 255) : p.color(128, 0, 128);
 
             let posX: number;
             let posY: number;
 
             if (parentPosition) {
-              // Preserve original type's direction 
+              // Preserve original type's direction
               posX = parentPosition.x + (image.type === "noise" ? -1 : 1) * Number(image.step) * (gridSize + padding);
               posY = parentPosition.y + gridSize + padding;
               // console.log(`Image type: ${image.type}, Step: ${image.step}, posX: ${posX}, posY: ${posY}`);
@@ -456,7 +454,6 @@ onMounted(() => {
         p.pop();
       };
 
-
       // Mouse interaction functions
       p.mousePressed = (event: MouseEvent) => {
         // Only start interactions if the mouse is within the canvas
@@ -545,7 +542,7 @@ onMounted(() => {
             // Create new purple square
             newImage = {
               pos: p.createVector(lastImage.pos.x, newY),
-              color: lastImage.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255), 
+              color: lastImage.type === "noise" ? p.color(255, 0, 0) : p.color(0, 0, 255),
               type: lastImage.type,
               step: lastImage.step,
               promptIndex: validPromptSteps,
@@ -565,13 +562,7 @@ onMounted(() => {
             const coordinate = `${Math.round(newImage.pos.x)},${Math.round(newImage.pos.y)}`;
             const stepString = newImage.step.toString();
 
-            const createdImageDoc = await createImageDoc(
-              lastImage._id || "null",
-              coordinate,
-              lastImage.type,
-              stepString,
-              newImage.promptIndex
-            );
+            const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, lastImage.type, stepString, newImage.promptIndex);
 
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
