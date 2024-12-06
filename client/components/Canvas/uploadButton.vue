@@ -56,7 +56,7 @@ const createImageDoc = async (): Promise<ImageDoc | null> => {
         promptedImage: "",
       },
     });
-    console.log(`Initial ImageDoc created successfully! Photo string is: ${base64Photo}`);
+    console.log(`Initial ImageDoc created successfully!`);
     emit("refreshImages"); // Let the parent know to refresh the images
 
     // Reset the form

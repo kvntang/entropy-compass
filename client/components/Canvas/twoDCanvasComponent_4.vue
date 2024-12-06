@@ -113,6 +113,7 @@ onMounted(() => {
         step: number;
         promptIndex?: number;
         _id?: string;
+        originalImage: string;
         parent_id?: string;
       }[] = [];
 
@@ -198,6 +199,7 @@ onMounted(() => {
               promptIndex: parseInt(image.prompt),
               _id: image._id,
               parent_id: image.parent,
+              originalImage: image.originalImage,
             });
           });
 

@@ -76,6 +76,7 @@ onMounted(() => {
         step: number;
         promptIndex?: number;
         _id?: string;
+        originalImage: string;
         parent_id?: string;
         isAnimating: boolean;
         currentY: number;
@@ -93,7 +94,7 @@ onMounted(() => {
       let panStartY = 0;
       let panStartTranslateX = 0;
       let panStartTranslateY = 0;
-      const gridSize = 40;
+      const gridSize = 70;
       const padding = 0;
       const stepDistance = 35;
       let rowOccupancy: { [key: number]: number } = {}; // Track squares in each row
@@ -196,6 +197,7 @@ onMounted(() => {
               parent_id: image.parent,
               isAnimating: false,
               currentY: pos.y,
+              originalImage: image.originalImage,
             });
 
             // Recursively set positions for children
@@ -214,7 +216,7 @@ onMounted(() => {
       };
 
       //-------------------DRAW----------------------------------------------------------------------------
-      p.draw = () => {
+      p.draw = async () => {
         p.background(0);
 
         p.push();
@@ -341,8 +343,19 @@ onMounted(() => {
             p.noStroke(); // No stroke for other squares
           }
 
-          //Draw Main Box
-          p.rect(sp.pos.x, sp.currentY, gridSize, gridSize);
+          //Draw Main Box/image here!!!
+          p.rect(sp.pos.x, sp.currentY, gridSize, gridSize); //purple box
+
+          // Create an Image object------------------------------------------------------------------------------------------------------------------------------------<<<<<
+          const imgElement = new Image();
+          imgElement.src = sp.originalImage;
+
+          const p5Img = p.createImage(500, 500); // Create a p5.Image
+          p5Img.drawingContext.drawImage(imgElement, 0, 0); // Draw the base64 image onto the p5.Image
+          // p5Img.loadPixels(); // Update the pixels array (if needed)
+
+          // Now you can use `p5Img` with `p.image()` in your sketch
+          p.image(p5Img, sp.pos.x, sp.currentY, gridSize, gridSize); //display image
 
           // Display the prompt index on top of the image
           p.fill(255);
