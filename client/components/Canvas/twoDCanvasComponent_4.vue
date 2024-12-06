@@ -609,6 +609,15 @@ onMounted(() => {
         }
       };
 
+      p.keyPressed = () => {
+        if (p.key === 'Escape' && isDraggingNew) {
+          isDraggingNew = false;
+          initialDragDirection = null;
+          point.isMoving = false;
+          console.log("Drag operation canceled.");
+        }
+      };
+
       p.windowResized = () => {
         const canvasWidth = p.windowWidth - 40;
         const canvasHeight = p.windowHeight - 120;
