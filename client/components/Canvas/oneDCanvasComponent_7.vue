@@ -66,7 +66,8 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
 
 onMounted(() => {
   if (!props.images || props.images.length === 0) {
-    console.error("No images received for rendering.");
+    console.log("No images received for rendering.");
+    // console.error("No images received for rendering.");
   }
   // Disable default scroll behavior
   const preventScroll = (e: Event) => e.preventDefault();
@@ -152,13 +153,17 @@ onMounted(() => {
         for (let imgDoc of props.images) {
           if (imgDoc.originalImage) {
             await new Promise<void>((resolve) => {
-              const img = p.loadImage(imgDoc.originalImage, () => {
-                imgDoc.p5Image = img;
-                resolve(); // Ensure the image is fully loaded before proceeding
-              }, () => {
-                console.error("Failed to load image:", imgDoc.originalImage);
-                resolve(); // Resolve even if image loading fails
-              });
+              const img = p.loadImage(
+                imgDoc.originalImage,
+                () => {
+                  imgDoc.p5Image = img;
+                  resolve(); // Ensure the image is fully loaded before proceeding
+                },
+                () => {
+                  console.error("Failed to load image:", imgDoc.originalImage);
+                  resolve(); // Resolve even if image loading fails
+                },
+              );
             });
           }
         }
@@ -572,10 +577,10 @@ onMounted(() => {
               newImage._id = createdImageDoc._id;
               newImage.color = p.color(128, 0, 128); // Purple for new ImageDoc consistency
               newImage.type = createdImageDoc.type; // Use type from the backend
-          } else {
+            } else {
               console.warn("Failed to create new ImageDoc. Skipping addition to staticPositions.");
               staticPositions.pop(); // Remove the new image if creation fails
-          }
+            }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
             //----------------------------------------------------------------------------------------------------
