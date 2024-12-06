@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import oneDCanvasComponent from "@/components/Canvas/oneDCanvasComponent_6.vue";
+import oneDCanvasComponent from "@/components/Canvas/oneDCanvasComponent_7.vue";
 import twoDCanvasComponent from "@/components/Canvas/twoDCanvasComponent_4.vue";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
