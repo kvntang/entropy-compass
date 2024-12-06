@@ -19,6 +19,7 @@ interface ImageDoc {
   steppedImage: string;
   promptedImage: string;
   _id?: string; // Optional, assigned after creation
+  p5Image?: p5.Image; // store preloaded p5.Image
 }
 
 // from parent code
@@ -84,6 +85,7 @@ onMounted(() => {
         targetY?: number;
         animationStartTime?: number;
         animationDuration?: number;
+        p5Image?: p5.Image;
       }[] = [];
 
       let isDragging = false;
@@ -96,7 +98,7 @@ onMounted(() => {
       let panStartTranslateY = 0;
       const gridSize = 70;
       const padding = 0;
-      const stepDistance = 35;
+      const stepDistance = 60;
       let rowOccupancy: { [key: number]: number } = {}; // Track squares in each row
       let baseRowHeight = gridSize + padding;
 
@@ -140,6 +142,14 @@ onMounted(() => {
         // Initialize camera translation to center at (0, 0)
         translateX = canvasWidth / 2; // Start at 0 on X-axis
         translateY = 0; // Start at 0 on Y-axis
+
+        // Preload images for each imagDoc
+        for (let imgDoc of props.images) {
+          if (imgDoc.originalImage) {
+            const img = p.loadImage(imgDoc.originalImage);
+            imgDoc.p5Image = img;
+          }
+        }
 
         //1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
@@ -187,6 +197,9 @@ onMounted(() => {
               shiftPurplesDown(pos.y);
             }
 
+            // assign preloaded p5 image
+            const preloadedImage = image.p5Image;
+
             staticPositions.push({
               pos: pos,
               color,
@@ -198,6 +211,7 @@ onMounted(() => {
               isAnimating: false,
               currentY: pos.y,
               originalImage: image.originalImage,
+              p5Image: preloadedImage,
             });
 
             // Recursively set positions for children
@@ -346,16 +360,10 @@ onMounted(() => {
           //Draw Main Box/image here!!!
           p.rect(sp.pos.x, sp.currentY, gridSize, gridSize); //purple box
 
-          // Create an Image object------------------------------------------------------------------------------------------------------------------------------------<<<<<
-          const imgElement = new Image();
-          imgElement.src = sp.originalImage;
-
-          const p5Img = p.createImage(500, 500); // Create a p5.Image
-          p5Img.drawingContext.drawImage(imgElement, 0, 0); // Draw the base64 image onto the p5.Image
-          // p5Img.loadPixels(); // Update the pixels array (if needed)
-
-          // Now you can use `p5Img` with `p.image()` in your sketch
-          p.image(p5Img, sp.pos.x, sp.currentY, gridSize, gridSize); //display image
+          // Draw the preloaded image
+          if (sp.p5Image) {
+            p.image(sp.p5Image, sp.pos.x, sp.currentY, gridSize, gridSize);
+          }
 
           // Display the prompt index on top of the image
           p.fill(255);
@@ -497,10 +505,12 @@ onMounted(() => {
             parent_id?: string;
             isAnimating: boolean;
             currentY: number;
+            originalImage: string;
             startY?: number;
             targetY?: number;
             animationStartTime?: number;
             animationDuration?: number;
+            p5Image?: p5.Image;
           };
 
           if (Math.abs(dragDistanceY) > Math.abs(dragDistanceX) && dragDistanceY > gridSize / 2) {
@@ -521,7 +531,8 @@ onMounted(() => {
               type: lastImage.type,
               step: lastImage.step,
               promptIndex: validPromptSteps,
-              _id: undefined,
+              originalImage: lastImage.originalImage, // Use the original image from the last image
+              _id: undefined, // Will be set after backend response
               parent_id: lastImage._id,
               isAnimating: true,
               currentY: lastImage.pos.y,
@@ -539,9 +550,18 @@ onMounted(() => {
 
             const createdImageDoc = await createImageDoc(lastImage._id || "null", coordinate, lastImage.type, stepString, newImage.promptIndex);
 
+            // if (createdImageDoc) {
+            //   newImage._id = createdImageDoc._id;
+            //   newImage.p5Image = p.loadImage(createdImageDoc.originalImage);
+            // }
             if (createdImageDoc) {
               newImage._id = createdImageDoc._id;
-            }
+              newImage.color = p.color(128, 0, 128); // Purple for new ImageDoc consistency
+              newImage.type = createdImageDoc.type; // Use type from the backend
+          } else {
+              console.warn("Failed to create new ImageDoc. Skipping addition to staticPositions.");
+              staticPositions.pop(); // Remove the new image if creation fails
+          }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
             //----------------------------------------------------------------------------------------------------
@@ -564,6 +584,7 @@ onMounted(() => {
                 parent_id: lastImage._id, // Link to the parent
                 isAnimating: false,
                 currentY: lastImage.pos.y,
+                originalImage: lastImage.originalImage, // Add originalImage property
               };
 
               staticPositions.push(newImage);

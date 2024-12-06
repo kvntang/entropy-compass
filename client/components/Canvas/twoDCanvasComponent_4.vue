@@ -18,6 +18,7 @@ interface ImageDoc {
   steppedImage: string;
   promptedImage: string;
   _id: string;
+  p5Image?: p5.Image;
 }
 
 const props = defineProps<{
@@ -115,6 +116,7 @@ onMounted(() => {
         _id?: string;
         originalImage: string;
         parent_id?: string;
+        p5Image?: p5.Image;
       }[] = [];
 
       let currentColor: p5.Color;
@@ -200,6 +202,7 @@ onMounted(() => {
               _id: image._id,
               parent_id: image.parent,
               originalImage: image.originalImage,
+              p5Image: image.originalImage ? p.loadImage(image.originalImage) : null,
             });
           });
 
@@ -271,10 +274,23 @@ onMounted(() => {
         staticPositions.forEach((sp) => {
           p.push();
           p.fill(sp.color);
-          p.stroke(sp._id === selectedParentId ? 255 : 0, sp._id === selectedParentId ? 255 : 0, 0, sp._id === selectedParentId ? 255 : 0); // Highlight selected parent
-          p.strokeWeight(sp._id === selectedParentId ? 2 : 1);
-          p.rectMode(p.CENTER);
-          p.rect(sp.pos.x, sp.pos.y, 40, 40);
+          p.stroke(
+            sp._id === selectedParentId ? 255 : 0,
+            sp._id === selectedParentId ? 255 : 0,
+            0,
+            sp._id === selectedParentId ? 255 : 0
+          ); 
+        p.strokeWeight(1);
+        p.rectMode(p.CENTER);
+
+        if (sp.p5Image) {
+            p.imageMode(p.CENTER);
+            p.image(sp.p5Image, sp.pos.x, sp.pos.y, 70, 70); // Display image
+            p.noFill();
+            p.rect(sp.pos.x, sp.pos.y, 70, 70);
+          } else {
+            p.rect(sp.pos.x, sp.pos.y, 70, 70); // Fallback to rectangle
+          }
           p.pop();
 
           p.fill(255);
@@ -296,7 +312,7 @@ onMounted(() => {
           p.fill(currentColor);
           p.stroke(255);
           p.rectMode(p.CENTER);
-          p.rect(point.pos.x, point.pos.y, 40, 40);
+          p.rect(point.pos.x, point.pos.y, 70, 70);
         }
 
         // Dragging feedback for creating new ImageDoc
@@ -378,6 +394,7 @@ onMounted(() => {
                 promptIndex: Number(newImage.prompt),
                 _id: newImage._id,
                 parent_id: newImage.parent,
+                originalImage: newImage.originalImage,
               });
 
               // Automatically select the new ImageDoc as the parent
@@ -592,7 +609,7 @@ onMounted(() => {
       };
 
       p.windowResized = () => {
-        const canvasWidth = p.windowWidth - 40;
+        const canvasWidth = p.windowWidth - 70;
         const canvasHeight = p.windowHeight - 120;
         p.resizeCanvas(canvasWidth, canvasHeight);
       };
