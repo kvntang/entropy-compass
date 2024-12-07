@@ -48,7 +48,7 @@ export default class ImageConcept {
   }
 
   /**
-   * Get all images (optionally sorted).
+   * Get all images (optionally sorted).-
    */
   async getImages() {
     return await this.images.readMany({}, { sort: { _id: -1 } });
