@@ -69,5 +69,8 @@
     "trailingComma": "all",
     "printWidth": 200,
     "endOfLine": "auto"
-  }
+  },
+  "engines": {
+  "node": "18.x"
+}
 }
