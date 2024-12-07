@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, ChatGPT, Imaging, Sessioning } from "./app"; // Import ChatGPT
+import { Authing, Imaging, Sessioning } from "./app";
 import { SessionDoc } from "./concepts/sessioning";
 
 import { z } from "zod";
@@ -10,7 +10,7 @@ import { z } from "zod";
  * Web server routes for the app. Implements synchronizations between concepts.
  */
 class Routes {
-  // User session and authentication routes
+  // Synchronize the concepts from `app.ts`.
 
   @Router.get("/session")
   async getSessionUser(session: SessionDoc) {
@@ -56,8 +56,8 @@ class Routes {
 
   @Router.post("/login")
   async logIn(session: SessionDoc, username: string, password: string) {
-    const user = await Authing.authenticate(username, password);
-    Sessioning.start(session, user._id);
+    const u = await Authing.authenticate(username, password);
+    Sessioning.start(session, u._id);
     return { msg: "Logged in!" };
   }
 
@@ -67,119 +67,31 @@ class Routes {
     return { msg: "Logged out!" };
   }
 
-  // Image API routes
+  //image API routes
 
+  /**
+   * Create a new ImageDoc.
+   */
   @Router.post("/images")
-  async createImage(
-    session: SessionDoc,
-    parent: ObjectId,
-    coordinate: string,
-    type: string,
-    step: string,
-    prompt?: string,
-    originalImage?: string,
-    steppedImage?: string,
-    promptedImage?: string
-  ) {
-    console.log("Received data in createImage:", { parent, coordinate, type, step, originalImage });
+  async createImage(session: SessionDoc, parent: ObjectId, coordinate: string, type: string, step: string, prompt?: string, originalImage?: string, steppedImage?: string, promptedImage?: string) {
     const author = Sessioning.getUser(session);
-    const created = await Imaging.create(
-      author,
-      parent,
-      coordinate,
-      type,
-      step,
-      prompt,
-      originalImage,
-      steppedImage,
-      promptedImage
-    );
+    const created = await Imaging.create(author, parent, coordinate, type, step, prompt, originalImage, steppedImage, promptedImage);
     return { msg: created.msg, image: created.image };
   }
 
   @Router.get("/images/author/:author")
-  @Router.validate(z.object({ author: z.string() }))
   async getImagesByAuthor(author: string) {
-    const id = new ObjectId(author);
-    const images = await Imaging.getImagesByAuthor(id);
-    console.log("Fetched images:", images);
-    return images; // Ensure this includes all necessary fields
+    const id = new ObjectId(author); // Convert string to ObjectId
+    const images = await Imaging.getImagesByAuthor(id); // Fetch images by author ID
+    return { images };
   }
 
   @Router.delete("/images/author/:authorId")
-  @Router.validate(z.object({ authorId: z.string() }))
   async deleteImagesByAuthor(authorId: string) {
     const author = new ObjectId(authorId);
-    return await Imaging.deleteAllByAuthor(author);
+    await Imaging.deleteAllByAuthor(author); // Imaging is your concept class
+    return { msg: "All images deleted successfully!" };
   }
-
-  @Router.post("/images/similar-words")
-  async generateSimilarWords(prompt: string) {
-    return await Imaging.generateSimilarWords(prompt);
-  }
-
-  @Router.get("/images/:id")
-  @Router.validate(z.object({ id: z.string() }))
-  async getImageById(id: string) {
-    return await Imaging.getImageById(new ObjectId(id));
-  }
-
-  @Router.patch("/images/:id")
-  @Router.validate(
-    z.object({
-      id: z.string(),
-      coordinate: z.string().optional(),
-      type: z.string().optional(),
-      step: z.string().optional(),
-      prompt: z.string().optional(),
-      originalImage: z.string().optional(),
-      steppedImage: z.string().optional(),
-      promptedImage: z.string().optional(),
-    })
-  )
-  async updateImage(
-    id: string,
-    coordinate?: string,
-    type?: string,
-    step?: string,
-    prompt?: string,
-    originalImage?: string,
-    steppedImage?: string,
-    promptedImage?: string
-  ) {
-    return await Imaging.updateImage(
-      new ObjectId(id),
-      coordinate,
-      type,
-      step,
-      prompt,
-      originalImage,
-      steppedImage,
-      promptedImage
-    );
-  }
-
-  /**
-   * Route to generate a word list using ChatGPT API.
-   */
-  @Router.post("/chatgpt")
-    async generateWordList(inputText: string) {
-      try {
-        if (!inputText) {
-          throw new Error("Input text is required.");
-        }
-        const result = await ChatGPT.generateWordList(inputText);
-        return { words: result };
-      } catch (error) {
-        console.error("Full error details:", error);
-        if (error instanceof Error) {
-          throw new Error(`Word list generation failed: ${error.message}`);
-        } else {
-          throw new Error("Word list generation failed: unknown error");
-        }
-      }
-    }
-
 }
 
 /** The web app. */

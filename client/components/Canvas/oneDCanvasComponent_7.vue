@@ -18,8 +18,6 @@ interface ImageDoc {
   originalImage: string;
   steppedImage: string;
   promptedImage: string;
-  caption: string;
-  wordList: string[];
   _id?: string; // Optional, assigned after creation
   p5Image?: p5.Image; // store preloaded p5.Image
 }
@@ -65,10 +63,6 @@ const createImageDoc = async (parentId: string, coordinate: string, type: string
 //--------------------------------------------------------------------------------------------------------------
 
 onMounted(() => {
-  if (!props.images || props.images.length === 0) {
-    console.log("No images received for rendering.");
-    // console.error("No images received for rendering.");
-  }
   // Disable default scroll behavior
   const preventScroll = (e: Event) => e.preventDefault();
   window.addEventListener("wheel", preventScroll, { passive: false });
@@ -149,26 +143,13 @@ onMounted(() => {
         translateX = canvasWidth / 2; // Start at 0 on X-axis
         translateY = 0; // Start at 0 on Y-axis
 
-        // Preload images for each ImageDoc
+        // Preload images for each imagDoc
         for (let imgDoc of props.images) {
           if (imgDoc.originalImage) {
-            await new Promise<void>((resolve) => {
-              const img = p.loadImage(
-                imgDoc.originalImage,
-                () => {
-                  imgDoc.p5Image = img;
-                  resolve(); // Ensure the image is fully loaded before proceeding
-                },
-                () => {
-                  console.error("Failed to load image:", imgDoc.originalImage);
-                  resolve(); // Resolve even if image loading fails
-                },
-              );
-            });
+            const img = p.loadImage(imgDoc.originalImage);
+            imgDoc.p5Image = img;
           }
         }
-
-        console.log("All images preloaded:", props.images);
 
         //1. Initialize the first ImageDoc if staticPositions is empty
         // Initival Vector
@@ -577,10 +558,10 @@ onMounted(() => {
               newImage._id = createdImageDoc._id;
               newImage.color = p.color(128, 0, 128); // Purple for new ImageDoc consistency
               newImage.type = createdImageDoc.type; // Use type from the backend
-            } else {
+          } else {
               console.warn("Failed to create new ImageDoc. Skipping addition to staticPositions.");
               staticPositions.pop(); // Remove the new image if creation fails
-            }
+          }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
             //----------------------------------------------------------------------------------------------------
