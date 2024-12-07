@@ -558,10 +558,10 @@ onMounted(() => {
               newImage._id = createdImageDoc._id;
               newImage.color = p.color(128, 0, 128); // Purple for new ImageDoc consistency
               newImage.type = createdImageDoc.type; // Use type from the backend
-          } else {
+            } else {
               console.warn("Failed to create new ImageDoc. Skipping addition to staticPositions.");
               staticPositions.pop(); // Remove the new image if creation fails
-          }
+            }
           } else if (Math.abs(dragDistanceX) > gridSize / 2) {
             //----------------------------------------------------------------------------------------------------
             //----------------------------------------------------------------------------------------------------
